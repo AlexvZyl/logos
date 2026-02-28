@@ -4,8 +4,8 @@ use crate::{
     prelude::*,
 };
 use indexmap::IndexMap;
-use quick_xml::events::Event;
 use quick_xml::Reader;
+use quick_xml::events::Event;
 use std::time::Instant;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
