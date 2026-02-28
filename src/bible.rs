@@ -3,8 +3,9 @@ use crate::{
     filesystem::{decompress_xz, is_xml_file, is_xz_compressed_xml},
     prelude::*,
 };
-use quick_xml::Reader;
+use indexmap::IndexMap;
 use quick_xml::events::Event;
+use quick_xml::Reader;
 use std::time::Instant;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -14,7 +15,8 @@ pub struct Bible {
     translation: String,
     disk_file: PathBuf,
 
-    index: HashMap<String, Book>,
+    index: IndexMap<String, Book>,
+    books: Vec<String>,
     raw: String,
 }
 
@@ -69,16 +71,18 @@ impl Bible {
         };
         info!("Loaded {:?} in {:?}", path, start.elapsed());
 
+        let index = Self::build_index(&raw)?;
         return Ok(Bible {
             disk_file: path.to_path_buf(),
-            index: Self::build_index(&raw)?,
+            books: index.keys().cloned().collect(),
+            index: index,
             translation: "KJV".to_string(), // TODO: Get translation.
             raw: raw,
         });
     }
 
-    pub fn get_books(&self) -> Vec<&String> {
-        self.index.keys().collect()
+    pub fn get_books(&self) -> &Vec<String> {
+        &self.books
     }
 
     pub fn get_book_index(&self, name: &str) -> Result<&Book> {
@@ -120,10 +124,10 @@ impl Bible {
         Ok(v.text.iter().map(move |&(s, e)| &raw[s..e]))
     }
 
-    fn build_index(raw: &str) -> Result<HashMap<String, Book>> {
+    fn build_index(raw: &str) -> Result<IndexMap<String, Book>> {
         info!("Building bible index");
         let start = Instant::now();
-        let mut index: HashMap<String, Book> = HashMap::new();
+        let mut index: IndexMap<String, Book> = IndexMap::new();
         let mut reader = Reader::from_str(raw);
         reader.config_mut().trim_text(true);
 
