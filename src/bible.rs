@@ -2,8 +2,8 @@ use crate::{
     filesystem::{decompress_xz, is_xml_file, is_xz_compressed_xml},
     prelude::*,
 };
-use quick_xml::Reader;
 use quick_xml::events::Event;
+use quick_xml::Reader;
 use std::time::Instant;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

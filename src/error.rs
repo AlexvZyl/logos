@@ -1,5 +1,7 @@
 use std::string::FromUtf8Error;
 
+use color_eyre::eyre;
+
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
     #[error("Invalid file for bible")]
@@ -17,6 +19,9 @@ pub enum Error {
     IoError(#[from] std::io::Error),
     #[error(transparent)]
     ParseError(#[from] FromUtf8Error),
+
+    #[error(transparent)]
+    Eyre(#[from] eyre::Report),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
