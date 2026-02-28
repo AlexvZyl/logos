@@ -9,7 +9,8 @@ mod filesystem;
 mod prelude;
 
 use crate::app::actions::KeyMap;
-use crate::app::state::{AppStateEnum, Event, OpeningState};
+use crate::app::state::{AppEvent, AppStateEnum};
+use crate::app::state_startup_screen::StartupScreen;
 use crate::config::MIN_TICK_RATE_MS;
 use crate::prelude::*;
 use crossterm::event::{self, KeyEventKind};
@@ -37,11 +38,11 @@ fn app_loop(terminal: &mut DefaultTerminal) -> Result<()> {
     let keymap = KeyMap::default();
     terminal.clear()?;
 
-    let mut state = AppStateEnum::Opening(OpeningState::new());
+    let mut state = AppStateEnum::Opening(StartupScreen::new());
 
     // Special startup logic.
     terminal.draw(|f| state.render(f).expect("render failed"))?;
-    state = state.update(Event::AppStart)?;
+    state = state.update(AppEvent::AppStart)?;
 
     loop {
         terminal.draw(|f| state.render(f).expect("render failed"))?;
@@ -54,7 +55,7 @@ fn app_loop(terminal: &mut DefaultTerminal) -> Result<()> {
                     continue;
                 }
                 if let Some(action) = keymap.get(&key.code) {
-                    state = state.update(Event::Action(action))?;
+                    state = state.update(AppEvent::UserAction(action))?;
                 }
             }
         }
@@ -64,8 +65,7 @@ fn app_loop(terminal: &mut DefaultTerminal) -> Result<()> {
         }
 
         // Pass tick along.
-        // TODO: Should this be time since last event, or last tick event?...
-        state = state.update(Event::Tick(last_tick.elapsed().as_millis() as usize))?;
+        state = state.update(AppEvent::Tick(last_tick.elapsed().as_millis() as usize))?;
         last_tick = Instant::now();
     }
 

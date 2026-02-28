@@ -12,6 +12,7 @@ pub enum UserAction {
 pub struct KeyMap(HashMap<KeyCode, UserAction>);
 
 impl KeyMap {
+    // TODO: This should go to a config file.
     pub fn default() -> Self {
         let mut map = HashMap::new();
         map.insert(KeyCode::Char('q'), UserAction::Quit);
