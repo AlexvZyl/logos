@@ -1,4 +1,4 @@
-pub use crate::app::state::AppEvent;
+pub use crate::app::events::AppEvent;
 pub use crate::config::*;
 pub use crate::error::{Error, Result};
 

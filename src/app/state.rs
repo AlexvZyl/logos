@@ -1,11 +1,9 @@
-use crate::app::actions::UserAction;
+use crate::app::events::UserAction;
 use crate::app::data::AppData;
 use crate::app::state_default_reader::DefaultReader;
 use crate::app::state_startup_screen::StartupScreen;
 use crate::prelude::*;
 use ratatui::Frame;
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
 
 pub trait AppStateTrait {
     fn get_app_data(self) -> AppData;
@@ -13,8 +11,6 @@ pub trait AppStateTrait {
     fn update(self, event: AppEvent) -> Result<AppStateEnum>;
     fn render(&mut self, f: &mut Frame) -> Result<()>;
 }
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
 
 pub enum AppStateEnum {
     Opening(StartupScreen),
@@ -52,15 +48,4 @@ impl AppStateEnum {
             }
         }
     }
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
-pub enum AppEvent {
-    /// Special event fired at start of app.
-    AppStart,
-    /// Time in ms since last tick.
-    Tick(usize),
-    /// Action performed/requested by the user.
-    UserAction(UserAction),
 }

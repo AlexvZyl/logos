@@ -8,8 +8,8 @@ mod error;
 mod filesystem;
 mod prelude;
 
-use crate::app::actions::KeyMap;
-use crate::app::state::{AppEvent, AppStateEnum};
+use crate::app::events::KeyMap;
+use crate::app::state::{ AppStateEnum};
 use crate::app::state_startup_screen::StartupScreen;
 use crate::config::MIN_TICK_RATE_MS;
 use crate::prelude::*;

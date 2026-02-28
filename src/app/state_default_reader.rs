@@ -1,7 +1,7 @@
 use ratatui::Frame;
 use ratatui::layout::{Constraint, Layout};
 
-use crate::app::actions::UserAction;
+use crate::app::events::UserAction;
 use crate::app::data::AppData;
 use crate::app::state::{AppStateEnum, AppStateTrait};
 use crate::components::book_reader::BookReader;
@@ -52,7 +52,7 @@ impl AppStateTrait for DefaultReader {
                         self.selected_book_index -= 1;
                     }
                 }
-                UserAction::SwitchWindow => {
+                UserAction::IncrementWindow => {
                     self.selected_window = match self.selected_window {
                         SelectedWindow::BooksView => SelectedWindow::BookReader,
                         SelectedWindow::BookReader => SelectedWindow::BooksView,

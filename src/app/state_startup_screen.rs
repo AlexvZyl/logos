@@ -1,4 +1,4 @@
-use crate::app::actions::UserAction;
+use crate::app::events::UserAction;
 use crate::app::data::AppData;
 use crate::app::state::{AppStateEnum, AppStateTrait};
 use crate::app::state_default_reader::DefaultReader;
