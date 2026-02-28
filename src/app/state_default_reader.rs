@@ -1,8 +1,8 @@
 use ratatui::Frame;
 use ratatui::layout::{Constraint, Layout};
 
-use crate::app::events::UserAction;
 use crate::app::data::AppData;
+use crate::app::events::UserAction;
 use crate::app::state::{AppStateEnum, AppStateTrait};
 use crate::components::book_reader::BookReader;
 use crate::components::books_view::BooksView;

@@ -3,8 +3,10 @@ pub use crate::config::*;
 pub use crate::error::{Error, Result};
 
 pub use log::{debug, error, info, trace, warn};
+
 pub use std::collections::HashMap;
 pub use std::path::{Path, PathBuf};
+pub use std::sync::Arc;
 pub use std::time::Instant;
 
 pub use ratatui::{

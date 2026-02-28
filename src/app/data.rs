@@ -1,15 +1,28 @@
+use std::ops::Deref;
+
 use crate::{bible::Bible, prelude::*};
 
-/// All of the members of this type has to be cheap to move, since it
-/// will move between states.
-pub struct AppData {
-    pub bible: Box<Bible>,
+// TODO: Revisit the name of this... Not sure if this makes sense.
+// That or this needs more state.
+pub struct AppDataInner {
+    pub bible: Bible,
 }
+
+/// Using an `Arc` here as this can be required to be shared and has to be cheap
+/// to copy/clone.
+pub struct AppData(Arc<AppDataInner>);
 
 impl AppData {
     pub fn from_translation(translation: &str) -> Result<AppData> {
-        Ok(AppData {
-            bible: Box::new(Bible::from_translation(translation)?),
-        })
+        Ok(AppData(Arc::new(AppDataInner {
+            bible: Bible::from_translation(translation)?,
+        })))
+    }
+}
+
+impl Deref for AppData {
+    type Target = AppDataInner;
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }
