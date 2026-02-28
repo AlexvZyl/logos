@@ -71,7 +71,7 @@ impl AppState for OpeningState {
         self.app_data = Some(AppData::from_translation("KVJ")?);
         match event {
             Event::Tick(_) => {
-                if self.start.elapsed() > Duration::from_millis(1000) {
+                if self.start.elapsed() > Duration::from_millis(600) {
                     return DefaultReaderViewState::from_state(AppStateEnum::Opening(self));
                 }
             }

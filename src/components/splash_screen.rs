@@ -1,5 +1,6 @@
 use crate::prelude::*;
 use ratatui::layout::{Alignment, Constraint, Direction, Layout};
+use ratatui::prelude::Stylize;
 use tui_big_text::{BigText, PixelSize};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -11,10 +12,13 @@ impl Widget for SplashScreen {
         let big_text = BigText::builder()
             .pixel_size(PixelSize::Full)
             .centered()
-            .lines(vec!["LOGOS".into()])
+            .lines(vec!["LOGOS".yellow().into()])
             .build();
 
-        let version = Paragraph::new(format!("v{VERSION}")).alignment(Alignment::Center);
+        let version = Paragraph::new(format!("v{VERSION}"))
+            .alignment(Alignment::Center)
+            .bold().italic();
+
 
         let chunks = Layout::default()
             .direction(Direction::Vertical)

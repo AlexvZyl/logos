@@ -15,7 +15,7 @@ use crossterm::event::{self, KeyCode, KeyEventKind};
 use env_logger::{Env, Target};
 use ratatui::DefaultTerminal;
 use std::fs::OpenOptions;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 fn setup_logging() {
     let log_dir = dirs::data_local_dir().expect("failed to resolve local data directory");
@@ -57,6 +57,7 @@ fn app_loop(terminal: &mut DefaultTerminal) -> Result<()> {
         }
 
         // Pass tick along.
+        // TODO: This this be since last event, or last tick?...
         state = state.update(Event::Tick(last_tick.elapsed().as_millis() as usize))?;
         last_tick = Instant::now();
     }
