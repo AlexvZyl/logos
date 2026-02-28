@@ -1,4 +1,4 @@
-use crate::app::data::AppData;
+use crate::app::data::PersistentAppData;
 use crate::app::events::UserAction;
 use crate::app::state::{AppStateEnum, AppStateTrait};
 use crate::app::state_default_reader::DefaultReader;
@@ -8,7 +8,7 @@ use crate::prelude::*;
 use ratatui::Frame;
 
 pub struct StartupScreen {
-    app_data: Option<AppData>,
+    app_data: Option<PersistentAppData>,
     start: Instant,
     splash: SplashScreen,
 }
@@ -33,7 +33,7 @@ impl AppStateTrait for StartupScreen {
 
         match event {
             AppEvent::AppStart => {
-                self.app_data = Some(AppData::from_translation("KVJ")?);
+                self.app_data = Some(PersistentAppData::from_translation("KVJ")?);
             }
             AppEvent::Tick(_) => {
                 if self.start.elapsed() > MIN_SPLASH_SCREEN_TIME {
@@ -54,7 +54,7 @@ impl AppStateTrait for StartupScreen {
         Ok(())
     }
 
-    fn get_app_data(self) -> AppData {
+    fn get_app_data(self) -> PersistentAppData {
         self.app_data
             .expect("Should not change state if app data not loaded")
     }

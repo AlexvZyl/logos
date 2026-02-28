@@ -1,11 +1,11 @@
-use crate::app::data::AppData;
+use crate::app::data::PersistentAppData;
 use crate::app::state_default_reader::DefaultReader;
 use crate::app::state_startup_screen::StartupScreen;
 use crate::prelude::*;
 use ratatui::Frame;
 
 pub trait AppStateTrait {
-    fn get_app_data(self) -> AppData;
+    fn get_app_data(self) -> PersistentAppData;
     fn from_state(state: AppStateEnum) -> Result<AppStateEnum>;
     fn update(self, event: AppEvent) -> Result<AppStateEnum>;
     fn render(&mut self, f: &mut Frame) -> Result<()>;
@@ -18,7 +18,7 @@ pub enum AppStateEnum {
 }
 
 impl AppStateEnum {
-    pub fn get_app_data(self) -> AppData {
+    pub fn get_app_data(self) -> PersistentAppData {
         match self {
             AppStateEnum::Opening(s) => s.get_app_data(),
             AppStateEnum::DefaultReader(s) => s.get_app_data(),

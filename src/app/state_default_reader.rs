@@ -1,4 +1,4 @@
-use crate::app::data::AppData;
+use crate::app::data::PersistentAppData;
 use crate::app::events::{AppEvent, UserAction};
 use crate::app::state::{AppStateEnum, AppStateTrait};
 use crate::components::Component;
@@ -10,7 +10,7 @@ use ratatui::Frame;
 use ratatui::layout::{Constraint, Layout};
 
 pub struct DefaultReader {
-    app_data: AppData,
+    app_data: PersistentAppData,
     books_view: BooksView,
     book_reader: BookReader,
     footer: LogosFooter,
@@ -23,7 +23,7 @@ impl AppStateTrait for DefaultReader {
         // TODO: Read from cache.
         let initial_book = &books[0];
 
-        let book_reader = BookReader::new(&app_data.bible, initial_book);
+        let book_reader = BookReader::new(app_data.bible.clone(), initial_book.to_string());
         let mut books_view = BooksView::new(books);
         books_view.update(&AppEvent::Focus);
 
@@ -49,8 +49,7 @@ impl AppStateTrait for DefaultReader {
             }
             AppEvent::UserAction(UserAction::MoveDown | UserAction::MoveUp) => {
                 self.books_view.update(&event);
-                self.book_reader
-                    .set_book(&self.app_data.bible, self.books_view.selected_book());
+                self.book_reader.set_book(self.books_view.selected_book());
                 self.book_reader.update(&event);
             }
             _ => {
@@ -77,7 +76,7 @@ impl AppStateTrait for DefaultReader {
         Ok(())
     }
 
-    fn get_app_data(self) -> AppData {
+    fn get_app_data(self) -> PersistentAppData {
         self.app_data
     }
 }
