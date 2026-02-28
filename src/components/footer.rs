@@ -1,3 +1,5 @@
+use ratatui::style::Stylize;
+
 use crate::config::VERSION;
 use crate::prelude::*;
 
@@ -11,10 +13,13 @@ impl Widget for LogosFooter {
                 "{:>width$}",
                 "q: quit ",
                 width = area.width as usize - 14
-            )),
+            ))
+            .bold()
+            .red(),
         ]);
         Paragraph::new(line)
             .style(Style::default().bg(Color::Black))
+            .bold()
             .render(area, buf);
     }
 }
