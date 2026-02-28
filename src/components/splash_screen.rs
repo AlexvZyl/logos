@@ -1,8 +1,8 @@
+use crate::config::VERSION;
 use crate::prelude::*;
 use ratatui::layout::{Alignment, Constraint, Direction, Layout};
 use ratatui::prelude::Stylize;
 use tui_big_text::{BigText, PixelSize};
-use crate::config::VERSION;
 
 pub struct SplashScreen;
 

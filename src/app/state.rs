@@ -1,6 +1,7 @@
 use std::time::{Duration, Instant};
 
 use crate::app::data::AppData;
+use crate::components::books_view::BooksView;
 use crate::components::footer::LogosFooter;
 use crate::components::splash_screen::SplashScreen;
 use crate::prelude::*;
@@ -86,7 +87,7 @@ impl AppState for OpeningState {
             }
             // Keep splash screen up for a short while.
             Event::Tick(_) => {
-                if self.start.elapsed() > Duration::from_millis(500) {
+                if self.start.elapsed() > Duration::from_millis(1000) {
                     return DefaultReaderState::from_state(AppStateEnum::Opening(self));
                 }
             }
@@ -141,6 +142,15 @@ impl AppState for DefaultReaderState {
         let [main, footer] =
             Layout::vertical([Constraint::Fill(1), Constraint::Length(1)]).areas(f.area());
 
+        let [books, _content] =
+            Layout::horizontal([Constraint::Percentage(15), Constraint::Fill(1)]).areas(main);
+
+        f.render_widget(
+            BooksView {
+                books: self.app_data.bible.get_books(),
+            },
+            books,
+        );
         f.render_widget(LogosFooter, footer);
         Ok(())
     }
