@@ -1,9 +1,11 @@
 use std::time::{Duration, Instant};
 
 use crate::app::data::AppData;
+use crate::components::footer::LogosFooter;
 use crate::components::splash_screen::SplashScreen;
 use crate::prelude::*;
 use ratatui::Frame;
+use ratatui::layout::{Constraint, Layout};
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -97,7 +99,7 @@ impl AppState for OpeningState {
     }
 
     fn render(&self, f: &mut Frame) -> Result<()> {
-        SplashScreen.render(f.area(), f.buffer_mut());
+        f.render_widget(SplashScreen, f.area());
         Ok(())
     }
 
@@ -136,6 +138,10 @@ impl AppState for DefaultReaderState {
     }
 
     fn render(&self, f: &mut Frame) -> Result<()> {
+        let [main, footer] =
+            Layout::vertical([Constraint::Fill(1), Constraint::Length(1)]).areas(f.area());
+
+        f.render_widget(LogosFooter, footer);
         Ok(())
     }
 
