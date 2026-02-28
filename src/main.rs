@@ -1,3 +1,7 @@
+mod error;
+mod prelude;
+mod utils;
+
 fn main() {
-    println!("Hello, world!");
+    let result = utils::decompress_xz("../assets/eng-kjv.osis.xml.xz");
 }

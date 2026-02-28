@@ -4,3 +4,6 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+ratatui = "0.30.0"
+thiserror = "2.0.18"
+xz2 = "0.1"
