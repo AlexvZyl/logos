@@ -22,9 +22,21 @@ pub struct Book {
     pub chapters: Vec<Chapter>,
 }
 
+impl Book {
+    pub fn get_num_chapters(&self) -> usize {
+        self.chapters.len()
+    }
+}
+
 #[derive(Default, Debug)]
 pub struct Chapter {
     pub verses: Vec<VerseView>,
+}
+
+impl Chapter {
+    pub fn get_num_verses(&self) -> usize {
+        self.verses.len()
+    }
 }
 
 /// A non-owning view into the raw memory.
@@ -55,6 +67,10 @@ impl Bible {
             translation: "KJV".to_string(), // TODO: Get translation.
             raw: raw,
         });
+    }
+
+    pub fn get_books(&self) -> Vec<&String> {
+        self.index.keys().collect()
     }
 
     pub fn get_book_index(&self, name: &str) -> Result<&Book> {
