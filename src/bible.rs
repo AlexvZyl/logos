@@ -1,9 +1,10 @@
 use crate::{
+    config::get_translations,
     filesystem::{decompress_xz, is_xml_file, is_xz_compressed_xml},
     prelude::*,
 };
-use quick_xml::events::Event;
 use quick_xml::Reader;
+use quick_xml::events::Event;
 use std::time::Instant;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -49,6 +50,13 @@ pub struct VerseView {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 impl Bible {
+    pub fn from_translation(translation: &str) -> Result<Bible> {
+        let file = get_translations()
+            .get("KJV")
+            .ok_or(Error::UnsupprtedTranslation(translation.to_string()))?;
+        Bible::from_file(file)
+    }
+
     pub fn from_file(path: &std::path::Path) -> Result<Bible> {
         info!("Loading {:?} into memory", path);
         let start = Instant::now();

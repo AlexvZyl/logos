@@ -14,6 +14,8 @@ pub enum Error {
     ChapterNotFound(String, usize),
     #[error("No matching chapter")]
     VerseNotFound(String, usize, usize),
+    #[error("Translation not supported")]
+    UnsupprtedTranslation(String),
 
     #[error(transparent)]
     IoError(#[from] std::io::Error),

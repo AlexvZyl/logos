@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
 mod bible;
+mod config;
 mod error;
 mod filesystem;
 mod prelude;
