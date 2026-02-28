@@ -2,6 +2,7 @@ use crate::app::events::{AppEvent, UserAction};
 use crate::bible::Bible;
 use crate::components::Component;
 use crate::prelude::*;
+use ratatui::layout::{Constraint, Direction, Layout};
 use ratatui::prelude::Stylize;
 use ratatui::text::Text;
 use ratatui::widgets::{Block, BorderType, Borders, Paragraph, Wrap};
@@ -30,6 +31,10 @@ impl BookReader {
             self.cached_lines = Self::build_lines(bible, book);
             self.scroll_offset = 0;
         }
+    }
+
+    pub fn selected_book(&self) -> &str {
+        &self.book_name
     }
 
     fn build_lines(bible: &Bible, book: &str) -> Vec<Line<'static>> {
@@ -93,9 +98,31 @@ impl Component for BookReader {
         let inner = block.inner(area);
         block.render(area, buf);
 
-        Paragraph::new(Text::from(self.cached_lines.clone()))
+        let columns = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([
+                Constraint::Min(2),
+                Constraint::Percentage(50),
+                Constraint::Min(2),
+                Constraint::Percentage(50),
+                Constraint::Min(2),
+            ])
+            .split(inner);
+
+        let col_height = columns[1].height;
+        let left_scroll = self.scroll_offset;
+        let right_scroll = self.scroll_offset + col_height;
+
+        let text = Text::from(self.cached_lines.clone());
+
+        Paragraph::new(text.clone())
             .wrap(Wrap { trim: false })
-            .scroll((self.scroll_offset, 0))
-            .render(inner, buf);
+            .scroll((left_scroll, 0))
+            .render(columns[1], buf);
+
+        Paragraph::new(text)
+            .wrap(Wrap { trim: false })
+            .scroll((right_scroll, 0))
+            .render(columns[3], buf);
     }
 }
