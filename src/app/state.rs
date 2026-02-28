@@ -176,10 +176,10 @@ impl AppState for DefaultReaderState {
         let min_index = self.scrolled_offset;
         let max_index = self.scrolled_offset + visible;
         if self.selected_book_index < min_index {
-            self.scrolled_offset -= 1;
+            self.scrolled_offset -= min_index - self.selected_book_index;
         }
         if self.selected_book_index > max_index {
-            self.scrolled_offset += 1;
+            self.scrolled_offset += self.selected_book_index - max_index;
         }
 
         f.render_widget(
