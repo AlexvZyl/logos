@@ -9,15 +9,26 @@ pub struct BooksView {
     selected_book_index: usize,
     scrolled_offset: usize,
     focused: bool,
+
+    // Pre-built lines to reduce cost of rendering.
+    all_lines: Vec<Line<'static>>,
+    selected_lines: Vec<Line<'static>>,
 }
 
 impl BooksView {
     pub fn new(books: Vec<String>) -> Self {
+        let all_lines = BooksView::build_all_lines(&books, "  ");
+        let selected_lines = BooksView::build_all_lines(&books, "> ")
+            .into_iter()
+            .map(|l| l.cyan().bold())
+            .collect();
         BooksView {
             books,
             selected_book_index: 0,
             scrolled_offset: 0,
             focused: false,
+            all_lines,
+            selected_lines,
         }
     }
 
@@ -27,6 +38,13 @@ impl BooksView {
 
     pub fn focused(&self) -> bool {
         self.focused
+    }
+
+    fn build_all_lines(books: &Vec<String>, prefix: &str) -> Vec<Line<'static>> {
+        books
+            .iter()
+            .map(|b| Line::from(format!("{}{}", prefix, b)))
+            .collect()
     }
 }
 
@@ -76,7 +94,7 @@ impl Component for BooksView {
             self.scrolled_offset += self.selected_book_index - max_index;
         }
 
-        for (row, (i, b)) in self
+        for (row, (i, _)) in self
             .books
             .iter()
             .enumerate()
@@ -89,14 +107,12 @@ impl Component for BooksView {
                 height: 1,
                 ..inner
             };
-            if i == self.selected_book_index {
-                Line::from(format!("> {}", b))
-                    .cyan()
-                    .bold()
-                    .render(line_area, buf);
+            let line = if i == self.selected_book_index {
+                &self.selected_lines[i]
             } else {
-                Line::from(format!("  {}", b)).render(line_area, buf);
-            }
+                &self.all_lines[i]
+            };
+            buf.set_line(line_area.x, line_area.y, line, line_area.width);
         }
     }
 }
