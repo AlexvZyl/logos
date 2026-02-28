@@ -18,7 +18,8 @@ pub trait AppState {
 
 pub enum AppStateEnum {
     Opening(OpeningState),
-    DefaultReader(DefaultReaderViewState),
+    DefaultReader(DefaultReaderState),
+    Exit,
 }
 
 impl AppStateEnum {
@@ -26,12 +27,18 @@ impl AppStateEnum {
         match self {
             AppStateEnum::Opening(s) => s.update(event),
             AppStateEnum::DefaultReader(s) => s.update(event),
+            AppStateEnum::Exit => {
+                panic!("Should not reach here")
+            }
         }
     }
     pub fn render(&self, f: &mut Frame) -> Result<()> {
         match self {
             AppStateEnum::Opening(s) => s.render(f),
             AppStateEnum::DefaultReader(s) => s.render(f),
+            AppStateEnum::Exit => {
+                panic!("Should not reach here")
+            }
         }
     }
 }
@@ -39,6 +46,7 @@ impl AppStateEnum {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 pub enum Event {
+    AppStart,
     // Time in ms.
     Tick(usize),
     // The pressed key.
@@ -68,14 +76,22 @@ impl AppState for OpeningState {
     }
 
     fn update(mut self, event: Event) -> Result<AppStateEnum> {
-        self.app_data = Some(AppData::from_translation("KVJ")?);
         match event {
+            // Lazy load data.
+            // TODO: Async would be cool here.
+            Event::AppStart => {
+                self.app_data = Some(AppData::from_translation("KVJ")?);
+            }
+            // Keep splash screen up for a short while.
             Event::Tick(_) => {
-                if self.start.elapsed() > Duration::from_millis(600) {
-                    return DefaultReaderViewState::from_state(AppStateEnum::Opening(self));
+                if self.start.elapsed() > Duration::from_millis(500) {
+                    return DefaultReaderState::from_state(AppStateEnum::Opening(self));
                 }
             }
-            Event::KeyPress(_) => {}
+            Event::KeyPress(c) => match c {
+                'q' => return Ok(AppStateEnum::Exit),
+                _ => {}
+            },
         }
         return Ok(AppStateEnum::Opening(self));
     }
@@ -93,22 +109,29 @@ impl AppState for OpeningState {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-pub struct DefaultReaderViewState {
+pub struct DefaultReaderState {
     app_data: AppData,
 }
 
-impl AppState for DefaultReaderViewState {
+impl AppState for DefaultReaderState {
     fn from_state(state: AppStateEnum) -> Result<AppStateEnum> {
         let app_data = match state {
             AppStateEnum::Opening(s) => s.get_app_data(),
             AppStateEnum::DefaultReader(s) => s.get_app_data(),
+            AppStateEnum::Exit => panic!("Should not be here"),
         };
-        Ok(AppStateEnum::DefaultReader(DefaultReaderViewState {
-            app_data,
-        }))
+        Ok(AppStateEnum::DefaultReader(DefaultReaderState { app_data }))
     }
 
     fn update(self, event: Event) -> Result<AppStateEnum> {
+        match event {
+            Event::AppStart => {}
+            Event::Tick(_) => {}
+            Event::KeyPress(c) => match c {
+                'q' => return Ok(AppStateEnum::Exit),
+                _ => {}
+            },
+        }
         Ok(AppStateEnum::DefaultReader(self))
     }
 

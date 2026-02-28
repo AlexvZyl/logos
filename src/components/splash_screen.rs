@@ -17,8 +17,8 @@ impl Widget for SplashScreen {
 
         let version = Paragraph::new(format!("v{VERSION}"))
             .alignment(Alignment::Center)
-            .bold().italic();
-
+            .bold()
+            .italic();
 
         let chunks = Layout::default()
             .direction(Direction::Vertical)

@@ -32,9 +32,14 @@ fn setup_logging() {
 }
 
 fn app_loop(terminal: &mut DefaultTerminal) -> Result<()> {
-    let mut state = AppStateEnum::Opening(OpeningState::new());
     let mut last_tick = Instant::now();
     terminal.clear()?;
+
+    let mut state = AppStateEnum::Opening(OpeningState::new());
+
+    // Special startup logic.
+    terminal.draw(|f| state.render(f).expect("render failed"))?;
+    state = state.update(Event::AppStart)?;
 
     loop {
         terminal.draw(|f| state.render(f).expect("render failed"))?;
@@ -47,7 +52,6 @@ fn app_loop(terminal: &mut DefaultTerminal) -> Result<()> {
                     continue;
                 }
                 match key.code {
-                    KeyCode::Char('q') => break, // TODO: Handle this differently.
                     KeyCode::Char(c) => {
                         state = state.update(Event::KeyPress(c))?;
                     }
@@ -56,8 +60,12 @@ fn app_loop(terminal: &mut DefaultTerminal) -> Result<()> {
             }
         }
 
+        if matches!(state, AppStateEnum::Exit) {
+            break;
+        }
+
         // Pass tick along.
-        // TODO: This this be since last event, or last tick?...
+        // TODO: Should this be time since last event, or last tick event?...
         state = state.update(Event::Tick(last_tick.elapsed().as_millis() as usize))?;
         last_tick = Instant::now();
     }
