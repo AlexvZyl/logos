@@ -8,10 +8,11 @@ mod error;
 mod filesystem;
 mod prelude;
 
+use crate::app::actions::KeyMap;
 use crate::app::state::{AppStateEnum, Event, OpeningState};
 use crate::config::MIN_TICK_RATE_MS;
 use crate::prelude::*;
-use crossterm::event::{self, KeyCode, KeyEventKind};
+use crossterm::event::{self, KeyEventKind};
 use env_logger::{Env, Target};
 use ratatui::DefaultTerminal;
 use std::fs::OpenOptions;
@@ -33,6 +34,7 @@ fn setup_logging() {
 
 fn app_loop(terminal: &mut DefaultTerminal) -> Result<()> {
     let mut last_tick = Instant::now();
+    let keymap = KeyMap::default();
     terminal.clear()?;
 
     let mut state = AppStateEnum::Opening(OpeningState::new());
@@ -51,11 +53,8 @@ fn app_loop(terminal: &mut DefaultTerminal) -> Result<()> {
                 if key.kind != KeyEventKind::Press {
                     continue;
                 }
-                match key.code {
-                    KeyCode::Char(c) => {
-                        state = state.update(Event::KeyPress(c))?;
-                    }
-                    _ => {}
+                if let Some(action) = keymap.get(&key.code) {
+                    state = state.update(Event::Action(action))?;
                 }
             }
         }

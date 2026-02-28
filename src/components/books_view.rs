@@ -6,6 +6,7 @@ pub struct BooksView<'a> {
     pub books: &'a Vec<String>,
     pub selected_book_index: usize,
     pub scrolled_offset: usize,
+    pub focused: bool,
 }
 
 impl<'a> Widget for BooksView<'a> {
@@ -13,7 +14,12 @@ impl<'a> Widget for BooksView<'a> {
         let block = Block::default()
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
-            .title(" Books ".yellow().bold());
+            .title(" Books ".yellow().bold())
+            .border_style(if self.focused {
+                Style::default().blue()
+            } else {
+                Style::default()
+            });
 
         let inner = block.inner(area);
         block.render(area, buf);

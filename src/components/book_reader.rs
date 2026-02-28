@@ -8,6 +8,7 @@ pub struct BookReader<'a> {
     pub bible: &'a Bible,
     pub book: &'a str,
     pub scroll_offset: u16,
+    pub focused: bool,
 }
 
 impl<'a> Widget for BookReader<'a> {
@@ -15,7 +16,12 @@ impl<'a> Widget for BookReader<'a> {
         let block = Block::default()
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
-            .title(format!(" {} ", self.book).yellow().bold());
+            .title(format!(" {} ", self.book).yellow().bold())
+            .border_style(if self.focused {
+                Style::default().blue()
+            } else {
+                Style::default()
+            });
 
         let inner = block.inner(area);
         block.render(area, buf);

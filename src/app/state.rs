@@ -1,13 +1,14 @@
 use std::time::{Duration, Instant};
 
+use crate::app::actions::UserAction;
 use crate::app::data::AppData;
 use crate::components::book_reader::BookReader;
 use crate::components::books_view::BooksView;
 use crate::components::footer::LogosFooter;
 use crate::components::splash_screen::SplashScreen;
 use crate::prelude::*;
-use ratatui::layout::{Constraint, Layout};
 use ratatui::Frame;
+use ratatui::layout::{Constraint, Layout};
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -64,8 +65,7 @@ pub enum Event {
     AppStart,
     // Time in ms.
     Tick(usize),
-    // The pressed key.
-    KeyPress(char),
+    Action(UserAction),
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -103,8 +103,8 @@ impl AppState for OpeningState {
                     return DefaultReaderState::from_state(AppStateEnum::Opening(self));
                 }
             }
-            Event::KeyPress(c) => match c {
-                'q' => return Ok(AppStateEnum::Exit),
+            Event::Action(action) => match action {
+                UserAction::Quit => return Ok(AppStateEnum::Exit),
                 _ => {}
             },
         }
@@ -124,11 +124,17 @@ impl AppState for OpeningState {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
+pub enum SelectedWindow {
+    BooksView,
+    BookReader,
+}
+
 pub struct DefaultReaderState {
     app_data: AppData,
     selected_book_index: usize,
     scrolled_offset: usize,
     reader_scroll: u16,
+    selected_window: SelectedWindow,
 }
 
 impl AppState for DefaultReaderState {
@@ -139,6 +145,7 @@ impl AppState for DefaultReaderState {
             selected_book_index: 0,
             scrolled_offset: 0,
             reader_scroll: 0,
+            selected_window: SelectedWindow::BooksView,
         }))
     }
 
@@ -148,19 +155,24 @@ impl AppState for DefaultReaderState {
         match event {
             Event::AppStart => {}
             Event::Tick(_) => {}
-            Event::KeyPress(c) => match c {
-                'q' => return Ok(AppStateEnum::Exit),
-                'j' => {
+            Event::Action(action) => match action {
+                UserAction::Quit => return Ok(AppStateEnum::Exit),
+                UserAction::MoveDown => {
                     if self.selected_book_index < book_count - 1 {
                         self.selected_book_index += 1;
                     }
                 }
-                'k' => {
+                UserAction::MoveUp => {
                     if self.selected_book_index > 0 {
                         self.selected_book_index -= 1;
                     }
                 }
-                _ => {}
+                UserAction::SwitchWindow => {
+                    self.selected_window = match self.selected_window {
+                        SelectedWindow::BooksView => SelectedWindow::BookReader,
+                        SelectedWindow::BookReader => SelectedWindow::BooksView,
+                    };
+                }
             },
         }
 
@@ -190,6 +202,7 @@ impl AppState for DefaultReaderState {
                 books: self.app_data.bible.get_books(),
                 selected_book_index: self.selected_book_index,
                 scrolled_offset: self.scrolled_offset,
+                focused: matches!(self.selected_window, SelectedWindow::BooksView),
             },
             books,
         );
@@ -199,6 +212,7 @@ impl AppState for DefaultReaderState {
                 bible: &self.app_data.bible,
                 book: book_name,
                 scroll_offset: self.reader_scroll,
+                focused: matches!(self.selected_window, SelectedWindow::BookReader),
             },
             content,
         );
