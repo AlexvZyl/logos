@@ -1,64 +1,63 @@
-use ratatui::Frame;
-use ratatui::layout::{Constraint, Layout};
-
 use crate::app::data::AppData;
-use crate::app::events::UserAction;
+use crate::app::events::{AppEvent, UserAction};
 use crate::app::state::{AppStateEnum, AppStateTrait};
+use crate::components::Component;
 use crate::components::book_reader::BookReader;
 use crate::components::books_view::BooksView;
 use crate::components::footer::LogosFooter;
 use crate::prelude::*;
-
-pub enum SelectedWindow {
-    BooksView,
-    BookReader,
-}
+use ratatui::Frame;
+use ratatui::layout::{Constraint, Layout};
 
 pub struct DefaultReader {
     app_data: AppData,
-    selected_book_index: usize,
-    scrolled_offset: usize,
-    reader_scroll: u16,
-    selected_window: SelectedWindow,
+    books_view: BooksView,
+    book_reader: BookReader,
+    footer: LogosFooter,
 }
 
 impl AppStateTrait for DefaultReader {
     fn from_state(state: AppStateEnum) -> Result<AppStateEnum> {
         let app_data = state.get_app_data();
+        let books = app_data.bible.get_books().clone();
+        // TODO: Read from cache.
+        let initial_book = &books[0];
+
+        let book_reader = BookReader::new(&app_data.bible, initial_book);
+        let mut books_view = BooksView::new(books);
+        books_view.update(&AppEvent::Focus);
+
         Ok(AppStateEnum::DefaultReader(DefaultReader {
             app_data,
-            selected_book_index: 0,
-            scrolled_offset: 0,
-            reader_scroll: 0,
-            selected_window: SelectedWindow::BooksView,
+            books_view,
+            book_reader,
+            footer: LogosFooter,
         }))
     }
 
     fn update(mut self, event: AppEvent) -> Result<AppStateEnum> {
-        let book_count = self.app_data.bible.get_books().len();
-
-        match event {
-            AppEvent::AppStart => {}
-            AppEvent::Tick(_) => {}
-            AppEvent::UserAction(action) => match action {
-                UserAction::Quit => return Ok(AppStateEnum::Exit),
-                UserAction::MoveDown => {
-                    if self.selected_book_index < book_count - 1 {
-                        self.selected_book_index += 1;
-                    }
+        match &event {
+            AppEvent::UserAction(UserAction::Quit) => return Ok(AppStateEnum::Exit),
+            AppEvent::UserAction(UserAction::IncrementWindow) => {
+                if self.books_view.focused() {
+                    self.books_view.update(&AppEvent::Defocus);
+                    self.book_reader.update(&AppEvent::Focus);
+                } else {
+                    self.book_reader.update(&AppEvent::Defocus);
+                    self.books_view.update(&AppEvent::Focus);
                 }
-                UserAction::MoveUp => {
-                    if self.selected_book_index > 0 {
-                        self.selected_book_index -= 1;
-                    }
-                }
-                UserAction::IncrementWindow => {
-                    self.selected_window = match self.selected_window {
-                        SelectedWindow::BooksView => SelectedWindow::BookReader,
-                        SelectedWindow::BookReader => SelectedWindow::BooksView,
-                    };
-                }
-            },
+            }
+            AppEvent::UserAction(UserAction::MoveDown | UserAction::MoveUp) => {
+                self.books_view.update(&event);
+                self.book_reader
+                    .set_book(&self.app_data.bible, self.books_view.selected_book());
+                self.book_reader.update(&event);
+            }
+            _ => {
+                self.books_view.update(&event);
+                self.book_reader.update(&event);
+                self.footer.update(&event);
+            }
         }
 
         Ok(AppStateEnum::DefaultReader(self))
@@ -71,37 +70,10 @@ impl AppStateTrait for DefaultReader {
         let [books, content] =
             Layout::horizontal([Constraint::Percentage(15), Constraint::Fill(1)]).areas(main);
 
-        let visible = (books.height - 3) as usize;
-
-        let min_index = self.scrolled_offset;
-        let max_index = self.scrolled_offset + visible;
-        if self.selected_book_index < min_index {
-            self.scrolled_offset -= min_index - self.selected_book_index;
-        }
-        if self.selected_book_index > max_index {
-            self.scrolled_offset += self.selected_book_index - max_index;
-        }
-
-        f.render_widget(
-            BooksView {
-                books: self.app_data.bible.get_books(),
-                selected_book_index: self.selected_book_index,
-                scrolled_offset: self.scrolled_offset,
-                focused: matches!(self.selected_window, SelectedWindow::BooksView),
-            },
-            books,
-        );
-        let book_name = &self.app_data.bible.get_books()[self.selected_book_index];
-        f.render_widget(
-            BookReader {
-                bible: &self.app_data.bible,
-                book: book_name,
-                scroll_offset: self.reader_scroll,
-                focused: matches!(self.selected_window, SelectedWindow::BookReader),
-            },
-            content,
-        );
-        f.render_widget(LogosFooter, footer);
+        let buf = f.buffer_mut();
+        self.books_view.render(books, buf);
+        self.book_reader.render(content, buf);
+        self.footer.render(footer, buf);
         Ok(())
     }
 
@@ -109,5 +81,3 @@ impl AppStateTrait for DefaultReader {
         self.app_data
     }
 }
-
-////////////////////////////////////////////////////////////////////////////////////////////////////

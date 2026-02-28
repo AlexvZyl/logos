@@ -11,7 +11,7 @@ pub fn get_translations() -> &'static Translations {
         .get_or_init(|| HashMap::from([("KJV", PathBuf::from("assets/eng-kjv.osis.xml.xz"))]))
 }
 
-pub const MIN_TICK_RATE_MS: Duration = Duration::from_millis(50);
+pub const MIN_TICK_RATE_MS: Duration = Duration::from_millis(100);
 
 pub const MIN_SPLASH_SCREEN_TIME: Duration = Duration::from_millis(500);
 

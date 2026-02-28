@@ -9,6 +9,8 @@ pub enum AppEvent {
     Tick(usize),
     /// Action performed/requested by the user.
     UserAction(UserAction),
+    Focus,
+    Defocus,
 }
 
 #[derive(Clone, Copy)]

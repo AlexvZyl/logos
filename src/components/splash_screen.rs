@@ -1,3 +1,5 @@
+use crate::app::events::AppEvent;
+use crate::components::Component;
 use crate::config::VERSION;
 use crate::prelude::*;
 use ratatui::layout::{Alignment, Constraint, Direction, Layout};
@@ -6,8 +8,10 @@ use tui_big_text::{BigText, PixelSize};
 
 pub struct SplashScreen;
 
-impl Widget for SplashScreen {
-    fn render(self, rect: Rect, buf: &mut Buffer) {
+impl Component for SplashScreen {
+    fn update(&mut self, _event: &AppEvent) {}
+
+    fn render(&mut self, rect: Rect, buf: &mut Buffer) {
         let big_text = BigText::builder()
             .pixel_size(PixelSize::Full)
             .centered()

@@ -1,12 +1,16 @@
 use ratatui::style::Stylize;
 
+use crate::app::events::AppEvent;
+use crate::components::Component;
 use crate::config::VERSION;
 use crate::prelude::*;
 
 pub struct LogosFooter;
 
-impl Widget for LogosFooter {
-    fn render(self, area: Rect, buf: &mut Buffer) {
+impl Component for LogosFooter {
+    fn update(&mut self, _event: &AppEvent) {}
+
+    fn render(&mut self, area: Rect, buf: &mut Buffer) {
         let line = Line::from(vec![
             Span::raw(format!(" logos [{}]", VERSION)),
             Span::raw(format!(
