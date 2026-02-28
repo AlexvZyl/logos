@@ -12,5 +12,6 @@ pub fn get_translations() -> &'static Translations {
 }
 
 pub const MIN_TICK_RATE_MS: Duration = Duration::from_millis(50);
+pub const MIN_SPLASH_SCREEN_TIME: Duration = Duration::from_millis(500);
 
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");

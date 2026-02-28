@@ -1,14 +1,14 @@
-use std::time::{Duration, Instant};
-
 use crate::app::actions::UserAction;
 use crate::app::data::AppData;
 use crate::components::book_reader::BookReader;
 use crate::components::books_view::BooksView;
 use crate::components::footer::LogosFooter;
 use crate::components::splash_screen::SplashScreen;
+use crate::config::MIN_SPLASH_SCREEN_TIME;
 use crate::prelude::*;
 use ratatui::Frame;
 use ratatui::layout::{Constraint, Layout};
+use std::time::Instant;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -99,7 +99,7 @@ impl AppState for OpeningState {
             }
             // Keep splash screen up for a short while.
             Event::Tick(_) => {
-                if self.start.elapsed() > Duration::from_millis(500) {
+                if self.start.elapsed() > MIN_SPLASH_SCREEN_TIME {
                     return DefaultReaderState::from_state(AppStateEnum::Opening(self));
                 }
             }
