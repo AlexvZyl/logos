@@ -28,7 +28,6 @@ impl AppStateTrait for StartupScreen {
 
     fn update(mut self, event: AppEvent) -> Result<AppStateEnum> {
         match event {
-            // Lazy load data.
             // TODO: Async would be cool here.
             AppEvent::AppStart => {
                 self.app_data = Some(AppData::from_translation("KVJ")?);
