@@ -6,6 +6,12 @@ pub enum Error {
     InvalidBibleFile,
     #[error("Could not create bible index")]
     BibleIndex(String),
+    #[error("No matching book")]
+    BookNotFound(String),
+    #[error("No matching chapter")]
+    ChapterNotFound(String, usize),
+    #[error("No matching chapter")]
+    VerseNotFound(String, usize, usize),
 
     #[error(transparent)]
     IoError(#[from] std::io::Error),

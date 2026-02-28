@@ -1,11 +1,10 @@
-use std::time::Instant;
-
 use crate::{
     filesystem::{decompress_xz, is_xml_file, is_xz_compressed_xml},
     prelude::*,
 };
 use quick_xml::Reader;
 use quick_xml::events::Event;
+use std::time::Instant;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -14,7 +13,7 @@ pub struct Bible {
     translation: String,
     disk_file: PathBuf,
 
-    pub index: HashMap<String, Book>,
+    index: HashMap<String, Book>,
     raw: String,
 }
 
@@ -25,13 +24,14 @@ pub struct Book {
 
 #[derive(Default, Debug)]
 pub struct Chapter {
-    pub verses: Vec<Verse>,
+    pub verses: Vec<VerseView>,
 }
 
+/// A non-owning view into the raw memory.
 #[derive(Default, Debug)]
-pub struct Verse {
-    /// Byte offset in the raw data.
-    pub offset: usize,
+pub struct VerseView {
+    /// (start, end) byte ranges of text regions in the raw data.
+    pub text: Vec<(usize, usize)>,
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -57,6 +57,45 @@ impl Bible {
         });
     }
 
+    pub fn get_book_index(&self, name: &str) -> Result<&Book> {
+        self.index
+            .get(name)
+            .ok_or(Error::BookNotFound(name.to_string()))
+    }
+
+    pub fn get_chapter_index(&self, name: &str, chapter: usize) -> Result<&Chapter> {
+        if chapter == 0 {
+            return Err(Error::ChapterNotFound(name.to_string(), chapter));
+        }
+
+        self.get_book_index(name)?
+            .chapters
+            .get(chapter - 1)
+            .ok_or(Error::ChapterNotFound(name.to_string(), chapter))
+    }
+
+    pub fn get_verse_index(&self, name: &str, chapter: usize, verse: usize) -> Result<&VerseView> {
+        if chapter == 0 {
+            return Err(Error::VerseNotFound(name.to_string(), chapter, verse));
+        }
+
+        self.get_chapter_index(name, chapter)?
+            .verses
+            .get(verse - 1)
+            .ok_or(Error::VerseNotFound(name.to_string(), chapter, verse))
+    }
+
+    pub fn get_verse_iter(
+        &self,
+        name: &str,
+        chapter: usize,
+        verse: usize,
+    ) -> Result<impl Iterator<Item = &str>> {
+        let v = self.get_verse_index(name, chapter, verse)?;
+        let raw = &self.raw;
+        Ok(v.text.iter().map(move |&(s, e)| &raw[s..e]))
+    }
+
     fn build_index(raw: &str) -> Result<HashMap<String, Book>> {
         info!("Building bible index");
         let start = Instant::now();
@@ -67,6 +106,7 @@ impl Bible {
         let mut buf = Vec::new();
         let mut book = String::new();
         let mut awaiting_title = false;
+        let mut in_verse = false;
 
         loop {
             let offset = reader.buffer_position() as usize;
@@ -95,8 +135,26 @@ impl Bible {
                 Ok(Event::Empty(ref e))
                     if e.name().as_ref() == b"verse" && Self::has_attr(e, b"sID") =>
                 {
+                    in_verse = true;
                     if let Some(ch) = index.get_mut(&book).and_then(|b| b.chapters.last_mut()) {
-                        ch.verses.push(Verse { offset });
+                        ch.verses.push(VerseView::default());
+                    }
+                }
+                Ok(Event::Empty(ref e))
+                    if e.name().as_ref() == b"verse" && Self::has_attr(e, b"eID") =>
+                {
+                    in_verse = false;
+                }
+                Ok(Event::Text(ref e)) if in_verse => {
+                    let len = e.len();
+                    if len > 0 {
+                        if let Some(verse) = index
+                            .get_mut(&book)
+                            .and_then(|b| b.chapters.last_mut())
+                            .and_then(|c| c.verses.last_mut())
+                        {
+                            verse.text.push((offset, offset + len));
+                        }
                     }
                 }
                 Ok(Event::Eof) => break,
