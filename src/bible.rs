@@ -129,7 +129,6 @@ impl Bible {
         let start = Instant::now();
         let mut index: IndexMap<String, Book> = IndexMap::new();
         let mut reader = Reader::from_str(raw);
-        reader.config_mut().trim_text(true);
 
         let mut buf = Vec::new();
         let mut book = String::new();
@@ -137,7 +136,6 @@ impl Bible {
         let mut in_verse = false;
 
         loop {
-            let offset = reader.buffer_position() as usize;
             match reader.read_event_into(&mut buf) {
                 Ok(Event::Start(ref e))
                     if e.name().as_ref() == b"div" && Self::has_attr_val(e, b"type", b"book") =>
@@ -176,12 +174,14 @@ impl Bible {
                 Ok(Event::Text(ref e)) if in_verse => {
                     let len = e.len();
                     if len > 0 {
+                        let end = reader.buffer_position() as usize;
+                        let start = end - len;
                         if let Some(verse) = index
                             .get_mut(&book)
                             .and_then(|b| b.chapters.last_mut())
                             .and_then(|c| c.verses.last_mut())
                         {
-                            verse.text.push((offset, offset + len));
+                            verse.text.push((start, end));
                         }
                     }
                 }

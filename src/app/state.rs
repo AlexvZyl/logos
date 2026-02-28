@@ -1,12 +1,13 @@
 use std::time::{Duration, Instant};
 
 use crate::app::data::AppData;
+use crate::components::book_reader::BookReader;
 use crate::components::books_view::BooksView;
 use crate::components::footer::LogosFooter;
 use crate::components::splash_screen::SplashScreen;
 use crate::prelude::*;
-use ratatui::Frame;
 use ratatui::layout::{Constraint, Layout};
+use ratatui::Frame;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -98,7 +99,7 @@ impl AppState for OpeningState {
             }
             // Keep splash screen up for a short while.
             Event::Tick(_) => {
-                if self.start.elapsed() > Duration::from_millis(1000) {
+                if self.start.elapsed() > Duration::from_millis(500) {
                     return DefaultReaderState::from_state(AppStateEnum::Opening(self));
                 }
             }
@@ -127,6 +128,7 @@ pub struct DefaultReaderState {
     app_data: AppData,
     selected_book_index: usize,
     scrolled_offset: usize,
+    reader_scroll: u16,
 }
 
 impl AppState for DefaultReaderState {
@@ -136,6 +138,7 @@ impl AppState for DefaultReaderState {
             app_data,
             selected_book_index: 0,
             scrolled_offset: 0,
+            reader_scroll: 0,
         }))
     }
 
@@ -168,7 +171,7 @@ impl AppState for DefaultReaderState {
         let [main, footer] =
             Layout::vertical([Constraint::Fill(1), Constraint::Length(1)]).areas(f.area());
 
-        let [books, _content] =
+        let [books, content] =
             Layout::horizontal([Constraint::Percentage(15), Constraint::Fill(1)]).areas(main);
 
         let visible = (books.height - 3) as usize;
@@ -189,6 +192,15 @@ impl AppState for DefaultReaderState {
                 scrolled_offset: self.scrolled_offset,
             },
             books,
+        );
+        let book_name = &self.app_data.bible.get_books()[self.selected_book_index];
+        f.render_widget(
+            BookReader {
+                bible: &self.app_data.bible,
+                book: book_name,
+                scroll_offset: self.reader_scroll,
+            },
+            content,
         );
         f.render_widget(LogosFooter, footer);
         Ok(())

@@ -21,7 +21,7 @@ impl<'a> Widget for BooksView<'a> {
             .map(|(i, b)| {
                 let content = format!("> {}", b);
                 if i == self.selected_book_index {
-                    ListItem::new(content).blue().bold()
+                    ListItem::new(content).cyan().bold()
                 } else {
                     ListItem::new(format!("  {}", b))
                 }
@@ -33,7 +33,7 @@ impl<'a> Widget for BooksView<'a> {
                 Block::default()
                     .borders(Borders::ALL)
                     .border_type(BorderType::Rounded)
-                    .title(" Books ".yellow()),
+                    .title(" Books ".yellow().bold()),
             )
             .render(area, buf);
     }
