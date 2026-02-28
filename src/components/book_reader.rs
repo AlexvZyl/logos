@@ -11,7 +11,7 @@ pub struct BookReader<'a> {
     pub focused: bool,
 }
 
-impl<'a> Widget for BookReader<'a> {
+impl Widget for BookReader<'_> {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let block = Block::default()
             .borders(Borders::ALL)

@@ -9,7 +9,7 @@ pub struct BooksView<'a> {
     pub focused: bool,
 }
 
-impl<'a> Widget for BooksView<'a> {
+impl Widget for BooksView<'_> {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let block = Block::default()
             .borders(Borders::ALL)
