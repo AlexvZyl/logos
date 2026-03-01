@@ -91,6 +91,7 @@ impl Column {
             }
 
             current_column.chapters.push(current_chapter);
+            remaining_chars -= width; // Newline.
         }
 
         Ok((current_column, None))
@@ -230,99 +231,122 @@ pub struct ColumnVerse {
 }
 
 impl ColumnVerse {
-    /// Walks over the words in the verse and handles the wrapping logic.
-    ///
-    /// Iterator gets:
-    /// - verse word (no whitespace)
-    /// - chars consumed by the word, including:
-    ///     - whitespace for following word
-    ///     - whitespace to fill wrapping
-    pub fn walk_words(
+    pub fn new(show_number: bool, number: usize, text: &str) -> Self {
+        Self {
+            show_number,
+            number,
+            // This trim is assumed in consumption calculations.
+            text: text.trim_start().to_string(),
+        }
+    }
+}
+
+impl ColumnVerse {
+    /// Returns:
+    /// (Consumed region, raw text buffer size)
+    pub fn get_consumption_regions(
         &self,
         width: usize,
         starting_offset: usize,
-    ) -> impl Iterator<Item = (&str, usize)> {
-        let remaining = width - starting_offset - self.get_number_offset();
+    ) -> Vec<(usize, usize)> {
+        let mut consumptions = Vec::new();
+        let mut current_consumption = self.get_number_consumption();
+        let mut current_raw_text_size = 0;
+        let mut remaining_chars = width - starting_offset - current_consumption;
 
-        let nexts = self
-            .text
-            .split_whitespace()
-            .skip(1)
-            .map(Some)
-            .chain(std::iter::once(None));
+        let mut first_word = true;
+        self.text.split_whitespace().for_each(|word| {
+            let word_usage = word.len() + 1; // Add leading space.
 
-        self.text
-            .split_whitespace()
-            .zip(nexts)
-            .scan(remaining, move |remaining, (w, next)| {
-                if w.len() > *remaining {
-                    let cost = *remaining + w.len();
-                    *remaining = width - w.len();
-                    Some((w, cost))
+            // No wrap.
+            if word_usage <= remaining_chars {
+                current_consumption += word_usage;
+                remaining_chars -= word_usage;
+
+                // First word does not have a leading whitespace.
+                // TODO: If there are pointer errors, come look here.
+                if first_word {
+                    first_word = false;
+                    current_raw_text_size += word.len();
                 } else {
-                    *remaining -= w.len();
-                    let trailing = match next {
-                        None => 0,
-                        Some(next) if next.len() + 1 > *remaining => *remaining,
-                        Some(_) => 1,
-                    };
-                    *remaining -= trailing;
-                    Some((w, w.len() + trailing))
+                    current_raw_text_size += word_usage;
                 }
-            })
+            }
+            // Wrap.
+            else {
+                // Consume trailing whitespace for previous word.
+                current_consumption += remaining_chars;
+                consumptions.push((current_consumption, current_raw_text_size));
+
+                // Reset, going to a new line.
+                remaining_chars = width;
+
+                // Usage on next line.
+                current_consumption = word_usage;
+                current_raw_text_size = word_usage;
+            }
+        });
+
+        consumptions.push((current_consumption, current_raw_text_size));
+        debug!("{:?}", consumptions);
+        consumptions
     }
 
     pub fn consumed_chars(&self, width: usize, starting_offset: usize) -> usize {
-        let words: Vec<_> = self.walk_words(width, starting_offset).collect();
-        for (w, c) in &words {
-            log::debug!("{:?} cost={}", w, c);
-        }
-        self.get_number_offset() + words.iter().map(|(_, c)| c).sum::<usize>()
+        self.get_consumption_regions(width, starting_offset)
+            .iter()
+            .map(|(a, _)| a)
+            .sum::<usize>()
     }
 
+    /// NOTE: Budget includes whitespace.  It is the rendering budget.
     pub fn split(
         self,
         width: usize,
         starting_offset: usize,
         budget: usize,
     ) -> (ColumnVerse, Option<ColumnVerse>) {
-        let mut consumed = 0;
-        let mut split_byte = 0;
+        let mut remaining_chars = budget;
+        let mut raw_index = 0;
 
-        for (word, cost) in self.walk_words(width, starting_offset) {
-            if consumed + cost > budget {
-                break;
+        let regions = self.get_consumption_regions(width, starting_offset);
+        regions.iter().for_each(|(consumed, raw_size)| {
+            if *consumed < remaining_chars {
+                remaining_chars -= *consumed;
+                raw_index += raw_size;
             }
-            consumed += cost;
-            split_byte = word.as_ptr() as usize - self.text.as_ptr() as usize + word.len();
-        }
+        });
 
-        let remainder = self.text[split_byte..].trim_start();
+        let first = self.text[..raw_index].trim_end().to_string();
+        let second = self.text[raw_index..].to_string();
+
+        let remainder = match second.is_empty() {
+            true => None,
+            false => Some(ColumnVerse {
+                show_number: false,
+                number: self.number,
+                text: second,
+            }),
+        };
+
         (
             ColumnVerse {
                 show_number: self.show_number,
                 number: self.number,
-                text: self.text[..split_byte].trim_end().to_string(),
+                text: first,
             },
-            if remainder.is_empty() {
-                None
-            } else {
-                Some(ColumnVerse {
-                    show_number: false,
-                    number: self.number,
-                    text: remainder.to_string(),
-                })
-            },
+            remainder,
         )
     }
 
-    fn get_number_offset(&self) -> usize {
+    // Does not add trailing space.
+    fn get_number_consumption(&self) -> usize {
         match self.show_number {
             false => 0,
-            true if self.number == 1 => 2,
+            true if self.number == 1 => 1,
             true => {
                 let digits = self.number.checked_ilog10().unwrap_or(0) as usize + 1;
-                digits + 1
+                digits
             }
         }
     }

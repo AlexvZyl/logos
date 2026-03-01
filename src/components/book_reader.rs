@@ -100,6 +100,7 @@ impl Component for BookReader {
 
         let padded = Self::layout(block.inner(area), self.scrolled_offset, self.num_columns);
 
+        debug!("Column dimensions: [{}, {}]", padded.width, padded.height);
         block.render(area, buf);
         if self.column.is_none() || self.book_changed {
             self.column = Some(self.build_column(padded.width as usize, padded.height as usize)?);
