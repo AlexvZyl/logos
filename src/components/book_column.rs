@@ -137,7 +137,7 @@ impl Component for Column {
                         Style::default().dark_gray(),
                     ));
                 }
-                spans.push(Span::raw(format!("{} ", verse.text)));
+                spans.push(Span::raw(format!("{} ", verse.text.trim_start())));
             }
             if !spans.is_empty() {
                 lines.push(Line::from(spans));
