@@ -1,5 +1,5 @@
 use crate::prelude::*;
-use std::sync::OnceLock;
+use std::{sync::OnceLock, time::Duration};
 
 type Translations = HashMap<&'static str, std::path::PathBuf>;
 
@@ -12,3 +12,7 @@ pub fn get_translations() -> &'static Translations {
 }
 
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+
+// TODO: Get from screen rate or config file.
+pub const TARGET_FRAMERATE: f64 = 120.0;
+pub const TARGET_FRAMETIME: Duration = Duration::from_millis((1000.0 / TARGET_FRAMERATE) as u64);

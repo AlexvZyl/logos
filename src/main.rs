@@ -33,6 +33,9 @@ fn setup_logging() {
 }
 
 fn app_loop(terminal: &mut DefaultTerminal) -> Result<()> {
+    info!("Target framerate: {TARGET_FRAMERATE}fps");
+    info!("Target frametime: {TARGET_FRAMETIME:?}");
+
     // Special startup logic.
     let mut state = AppStateEnum::Opening(StartupScreen::new());
     terminal.draw(|f| {
@@ -44,9 +47,16 @@ fn app_loop(terminal: &mut DefaultTerminal) -> Result<()> {
     loop {
         // Wait for event.
         event::poll(Duration::MAX)?;
+        let start = Instant::now();
 
         // Process all events.  This prevents rendering from falling behind.
-        while event::poll(Duration::from_millis(0))? {
+        // Using frametime here so that we batch events before rendering for when there is a lot of
+        // event. For example, scrolling with low key-repeat time.
+        loop {
+            if !event::poll(TARGET_FRAMETIME.saturating_sub(start.elapsed()))? {
+                break;
+            }
+
             if let event::Event::Key(key) = event::read()? {
                 if key.kind != KeyEventKind::Press {
                     continue;
