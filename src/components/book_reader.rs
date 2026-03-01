@@ -25,6 +25,7 @@ impl BookReader {
             focused: false,
             book_changed: true,
             view_dirty: true,
+            // TODO: Change based on terminal size.
             num_columns: 2,
         }
     }
@@ -33,15 +34,12 @@ impl BookReader {
         if self.current_book_name != book {
             self.current_book_name = book.to_string();
             self.scrolled_offset = 0;
+            self.book_changed = true;
         }
     }
 
-    pub fn selected_book(&self) -> &str {
-        &self.current_book_name
-    }
-
-    /// To simulate scrolling the pages we use the layout.  It switches
-    /// from N to 2N "pages" depending on the scroll.
+    /// To simulate scrolling the pages we use the layout.  It switches from N to 2N "columns"
+    /// depending on the scroll.
     fn layout(inner: Rect, scrolled_offset: usize, num_columns: usize) -> Vec<Rect> {
         let page_height = inner.height as usize;
         let phase = scrolled_offset % (page_height.max(1));
@@ -91,15 +89,15 @@ impl BookReader {
         }
     }
 
-    /// Calculates how many chars can fit into a single "page".
-    fn chars_per_page(area: Rect, num_columns: usize) -> usize {
+    /// Calculates how many chars can fit into a single column.
+    fn chars_per_column(area: Rect, num_columns: usize) -> usize {
         let inner_width = area.width.saturating_sub(2);
         let inner_height = area.height.saturating_sub(2);
         let col_width = inner_width / num_columns.max(1) as u16;
         (col_width as usize) * (inner_height as usize)
     }
 
-    fn page_text(bible: &Bible, book: &str, char_limit: usize) -> Vec<Span<'static>> {
+    fn column_text(bible: &Bible, book: &str, char_limit: usize) -> Vec<Span<'static>> {
         let Ok(book_index) = bible.get_book_index(book) else {
             return vec![];
         };
@@ -168,8 +166,8 @@ impl Component for BookReader {
         let inner = block.inner(area);
         block.render(area, buf);
 
-        let char_limit = Self::chars_per_page(area, self.num_columns);
-        let spans = Self::page_text(&self.bible, &self.current_book_name, char_limit);
+        let char_limit = Self::chars_per_column(area, self.num_columns);
+        let spans = Self::column_text(&self.bible, &self.current_book_name, char_limit);
         let mk = || Paragraph::new(Line::from(spans.clone())).wrap(Wrap { trim: false });
 
         for pane in Self::layout(inner, self.scrolled_offset, self.num_columns) {

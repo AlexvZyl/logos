@@ -6,10 +6,13 @@ pub enum AppEvent {
     AppStart,
     /// Action performed/requested by the user.
     UserAction(UserAction),
+    /// Window focus, specific to components.
     Focus,
+    /// Window defocus, specific to components.
     Defocus,
 }
 
+/// Actions that can be performed by the user.  They all should have key mappings.
 #[derive(Clone, Copy)]
 pub enum UserAction {
     Quit,
@@ -19,10 +22,12 @@ pub enum UserAction {
     DecrementWindow,
 }
 
+/// Mappings of keys -> actions.
+///
+/// TODO: This should go to a config file.
 pub struct KeyMap(HashMap<KeyCode, UserAction>);
 
 impl KeyMap {
-    // TODO: This should go to a config file.
     pub fn default() -> Self {
         let mut map = HashMap::new();
         map.insert(KeyCode::Char('q'), UserAction::Quit);
