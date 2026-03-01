@@ -17,8 +17,9 @@ pub struct BooksView {
 
 impl BooksView {
     pub fn new(books: Vec<String>) -> Self {
-        let all_lines = BooksView::build_all_lines(&books, "  ");
-        let selected_lines = BooksView::build_all_lines(&books, "> ")
+        let all_lines = BooksView::build_all_lines(&books, "   ");
+        // TODO: Only use nerd font icons if available.
+        let selected_lines = BooksView::build_all_lines(&books, "  ")
             .into_iter()
             .map(|l| l.cyan().bold())
             .collect();
