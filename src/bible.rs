@@ -4,8 +4,8 @@ use crate::{
     prelude::*,
 };
 use indexmap::IndexMap;
-use quick_xml::Reader;
 use quick_xml::events::Event;
+use quick_xml::Reader;
 use std::time::Instant;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -29,6 +29,14 @@ impl Book {
     pub fn get_num_chapters(&self) -> usize {
         self.chapters.len()
     }
+
+    pub fn chapters_from(&self, chapter: usize) -> impl Iterator<Item = (usize, &Chapter)> {
+        self.chapters
+            .iter()
+            .enumerate()
+            .skip(chapter - 1)
+            .map(|(i, c)| (i + 1, c))
+    }
 }
 
 #[derive(Default, Debug)]
@@ -39,6 +47,18 @@ pub struct Chapter {
 impl Chapter {
     pub fn get_num_verses(&self) -> usize {
         self.verses.len()
+    }
+
+    pub fn verses_from<'a>(
+        &'a self,
+        verse: usize,
+        raw: &'a str,
+    ) -> impl Iterator<Item = (usize, &str)> {
+        self.verses
+            .iter()
+            .enumerate()
+            .skip(verse - 1)
+            .flat_map(move |(i, v)| v.text.iter().map(move |&(s, e)| (i + 1, &raw[s..e])))
     }
 }
 
@@ -83,6 +103,10 @@ impl Bible {
 
     pub fn get_books(&self) -> &Vec<String> {
         &self.books
+    }
+
+    pub fn raw(&self) -> &str {
+        &self.raw
     }
 
     pub fn get_book_index(&self, name: &str) -> Result<&Book> {

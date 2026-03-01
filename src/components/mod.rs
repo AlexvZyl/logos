@@ -1,3 +1,4 @@
+pub mod book_column;
 pub mod book_reader;
 pub mod books_view;
 pub mod footer;
