@@ -9,9 +9,11 @@ use tui_big_text::{BigText, PixelSize};
 pub struct SplashScreen;
 
 impl Component for SplashScreen {
-    fn update(&mut self, _event: &AppEvent) {}
+    fn update(&mut self, _event: &AppEvent) -> Result<()> {
+        Ok(())
+    }
 
-    fn render(&mut self, rect: Rect, buf: &mut Buffer) {
+    fn render(&mut self, rect: Rect, buf: &mut Buffer) -> Result<()> {
         let big_text = BigText::builder()
             .pixel_size(PixelSize::Full)
             .centered()
@@ -41,5 +43,6 @@ impl Component for SplashScreen {
         big_text.render(chunks[1], buf);
         version.render(chunks[2], buf);
         prompt.render(chunks[4], buf);
+        Ok(())
     }
 }

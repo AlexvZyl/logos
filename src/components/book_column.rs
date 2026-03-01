@@ -30,28 +30,36 @@ impl Column {
 
         let book_index = bible.get_book_index(book)?;
 
-        for (_, chapter_data) in book_index.chapters_from(start_chapter) {
+        for (chapter_num, chapter_data) in book_index.chapters_from(start_chapter) {
             let separator = if current_column.chapters.is_empty() {
                 0
             } else {
                 width
             };
-            assert!(separator < remaining_chars);
+            if separator >= remaining_chars {
+                return Ok((current_column, None));
+            }
             remaining_chars -= separator;
 
             let mut current_chapter = ColumnChapter {
                 show_heading: true,
+                number: chapter_num,
                 verses: Vec::new(),
             };
             let chapter_cost = current_chapter.consumed_chars(width);
-            assert!(chapter_cost < remaining_chars);
+            if chapter_cost >= remaining_chars {
+                return Ok((current_column, None));
+            }
             remaining_chars -= chapter_cost;
 
-            for (_, text) in chapter_data.verses_from(1, bible.raw()) {
+            let mut last_verse_num = 0;
+            for (verse_num, text) in chapter_data.verses_from(1, bible.raw()) {
                 let current_verse = ColumnVerse {
-                    show_number: true,
+                    show_number: verse_num != last_verse_num,
+                    number: verse_num,
                     text: text.to_string(),
                 };
+                last_verse_num = verse_num;
                 let verse_cost = current_verse.consumed_chars(width);
 
                 // Entire verse does not fit.
@@ -67,6 +75,7 @@ impl Column {
                             height: height,
                             chapters: vec![ColumnChapter {
                                 show_heading: false,
+                                number: chapter_num,
                                 verses: vec![verse],
                             }],
                         }),
@@ -103,19 +112,51 @@ impl Column {
 }
 
 impl Component for Column {
-    fn update(&mut self, event: &AppEvent) {
-        match event {
-            _ => {}
-        }
+    fn update(&mut self, _event: &AppEvent) -> Result<()> {
+        Ok(())
     }
 
-    fn render(&mut self, area: Rect, buf: &mut Buffer) {}
+    fn render(&mut self, area: Rect, buf: &mut Buffer) -> Result<()> {
+        let mut lines: Vec<Line> = Vec::new();
+
+        for (i, chapter) in self.chapters.iter().enumerate() {
+            if chapter.show_heading {
+                if i > 0 {
+                    lines.push(Line::raw(""));
+                }
+                lines.push(Line::styled(
+                    format!("Chapter {}", chapter.number),
+                    Style::default().italic().blue(),
+                ));
+            }
+            let mut spans: Vec<Span> = Vec::new();
+            for verse in &chapter.verses {
+                if verse.show_number {
+                    spans.push(Span::styled(
+                        format!("{} ", verse.number),
+                        Style::default().dark_gray(),
+                    ));
+                }
+                spans.push(Span::raw(format!("{} ", verse.text)));
+            }
+            if !spans.is_empty() {
+                lines.push(Line::from(spans));
+            }
+        }
+
+        Paragraph::new(lines)
+            .wrap(ratatui::widgets::Wrap { trim: false })
+            .render(area, buf);
+
+        Ok(())
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 pub struct ColumnChapter {
     pub show_heading: bool,
+    pub number: usize,
     pub verses: Vec<ColumnVerse>,
 }
 
@@ -150,6 +191,7 @@ impl ColumnChapter {
                 return (
                     ColumnChapter {
                         show_heading: self.show_heading,
+                        number: self.number,
                         verses: first,
                     },
                     if second.is_empty() {
@@ -157,6 +199,7 @@ impl ColumnChapter {
                     } else {
                         Some(ColumnChapter {
                             show_heading: false,
+                            number: self.number,
                             verses: second,
                         })
                     },
@@ -167,6 +210,7 @@ impl ColumnChapter {
         (
             ColumnChapter {
                 show_heading: self.show_heading,
+                number: self.number,
                 verses: first,
             },
             None,
@@ -178,6 +222,7 @@ impl ColumnChapter {
 
 pub struct ColumnVerse {
     pub show_number: bool,
+    pub number: usize,
     pub text: String,
 }
 
@@ -234,6 +279,7 @@ impl ColumnVerse {
         (
             ColumnVerse {
                 show_number: self.show_number,
+                number: self.number,
                 text: self.text[..split_byte].trim_end().to_string(),
             },
             if remainder.is_empty() {
@@ -241,6 +287,7 @@ impl ColumnVerse {
             } else {
                 Some(ColumnVerse {
                     show_number: false,
+                    number: self.number,
                     text: remainder.to_string(),
                 })
             },

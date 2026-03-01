@@ -30,7 +30,7 @@ impl AppStateTrait for StartupScreen {
     }
 
     fn update(mut self, event: AppEvent) -> Result<AppStateEnum> {
-        self.splash.update(&event);
+        self.splash.update(&event)?;
 
         match event {
             AppEvent::AppStart => {
@@ -52,8 +52,8 @@ impl AppStateTrait for StartupScreen {
         let [main, footer] =
             Layout::vertical([Constraint::Fill(1), Constraint::Length(1)]).areas(area);
 
-        self.splash.render(main, buf);
-        LogosFooter::new().render(footer, buf);
+        self.splash.render(main, buf)?;
+        LogosFooter::new().render(footer, buf)?;
         Ok(())
     }
 

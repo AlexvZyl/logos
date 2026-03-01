@@ -19,9 +19,11 @@ impl LogosFooter {
 }
 
 impl Component for LogosFooter {
-    fn update(&mut self, _event: &AppEvent) {}
+    fn update(&mut self, _event: &AppEvent) -> Result<()> {
+        Ok(())
+    }
 
-    fn render(&mut self, area: Rect, buf: &mut Buffer) {
+    fn render(&mut self, area: Rect, buf: &mut Buffer) -> Result<()> {
         let left = Line::from(self.left_side.as_str());
         let right = Line::from(self.right_side.as_str()).right_aligned();
 
@@ -41,5 +43,6 @@ impl Component for LogosFooter {
             .bold()
             .red()
             .render(right_area, buf);
+        Ok(())
     }
 }

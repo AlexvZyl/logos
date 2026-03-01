@@ -54,15 +54,16 @@ pub struct DefaultReader {
 }
 
 impl DefaultReader {
-    fn defocus_all(&mut self) {
-        self.books_view.update(&AppEvent::Defocus);
-        self.book_reader.update(&AppEvent::Defocus);
-        self.references.update(&AppEvent::Defocus);
-        self.strongs.update(&AppEvent::Defocus);
+    fn defocus_all(&mut self) -> Result<()> {
+        self.books_view.update(&AppEvent::Defocus)?;
+        self.book_reader.update(&AppEvent::Defocus)?;
+        self.references.update(&AppEvent::Defocus)?;
+        self.strongs.update(&AppEvent::Defocus)?;
+        Ok(())
     }
 
-    fn focus(&mut self, window: FocusedWindow) {
-        self.defocus_all();
+    fn focus(&mut self, window: FocusedWindow) -> Result<()> {
+        self.defocus_all()?;
         self.focused = window;
         match window {
             FocusedWindow::Books => self.books_view.update(&AppEvent::Focus),
@@ -81,7 +82,7 @@ impl AppStateTrait for DefaultReader {
 
         let book_reader = BookReader::new(app_data.bible.clone(), initial_book.to_string());
         let mut books_view = BooksView::new(books);
-        books_view.update(&AppEvent::Focus);
+        books_view.update(&AppEvent::Focus)?;
 
         Ok(AppStateEnum::DefaultReader(DefaultReader {
             app_data,
@@ -98,10 +99,10 @@ impl AppStateTrait for DefaultReader {
         match &event {
             AppEvent::UserAction(UserAction::Quit) => return Ok(AppStateEnum::Exit),
             AppEvent::UserAction(UserAction::IncrementWindow) => {
-                self.focus(self.focused.next());
+                self.focus(self.focused.next())?;
             }
             AppEvent::UserAction(UserAction::DecrementWindow) => {
-                self.focus(self.focused.prev());
+                self.focus(self.focused.prev())?;
             }
             AppEvent::UserAction(UserAction::JumpToWindow(i)) => {
                 self.focus(match i {
@@ -110,14 +111,14 @@ impl AppStateTrait for DefaultReader {
                     2 => FocusedWindow::References,
                     3 => FocusedWindow::Strongs,
                     _ => self.focused,
-                });
+                })?;
             }
             _ => {
-                self.books_view.update(&event);
-                self.book_reader.update(&event);
-                self.references.update(&event);
-                self.strongs.update(&event);
-                self.footer.update(&event);
+                self.books_view.update(&event)?;
+                self.book_reader.update(&event)?;
+                self.references.update(&event)?;
+                self.strongs.update(&event)?;
+                self.footer.update(&event)?;
             }
         }
 
@@ -141,11 +142,11 @@ impl AppStateTrait for DefaultReader {
                 .areas(sidebar);
 
         let buf = f.buffer_mut();
-        self.books_view.render(books, buf);
-        self.book_reader.render(content, buf);
-        self.references.render(references, buf);
-        self.strongs.render(strongs, buf);
-        self.footer.render(footer, buf);
+        self.books_view.render(books, buf)?;
+        self.book_reader.render(content, buf)?;
+        self.references.render(references, buf)?;
+        self.strongs.render(strongs, buf)?;
+        self.footer.render(footer, buf)?;
         Ok(())
     }
 

@@ -50,7 +50,7 @@ impl BooksView {
 }
 
 impl Component for BooksView {
-    fn update(&mut self, event: &AppEvent) {
+    fn update(&mut self, event: &AppEvent) -> Result<()> {
         match event {
             AppEvent::Focus => self.focused = true,
             AppEvent::Defocus => self.focused = false,
@@ -69,9 +69,10 @@ impl Component for BooksView {
             },
             _ => {}
         }
+        Ok(())
     }
 
-    fn render(&mut self, area: Rect, buf: &mut Buffer) {
+    fn render(&mut self, area: Rect, buf: &mut Buffer) -> Result<()> {
         let block = Block::default()
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
@@ -115,5 +116,6 @@ impl Component for BooksView {
             };
             buf.set_line(line_area.x, line_area.y, line, line_area.width);
         }
+        Ok(())
     }
 }

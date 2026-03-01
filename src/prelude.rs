@@ -1,3 +1,5 @@
+#![allow(unused_imports)]
+
 pub use crate::app::events::AppEvent;
 pub use crate::config::*;
 pub use crate::error::{Error, Result};

@@ -10,6 +10,6 @@ use crate::app::events::AppEvent;
 use crate::prelude::*;
 
 pub trait Component {
-    fn update(&mut self, event: &AppEvent);
-    fn render(&mut self, area: Rect, buf: &mut Buffer);
+    fn update(&mut self, event: &AppEvent) -> Result<()>;
+    fn render(&mut self, area: Rect, buf: &mut Buffer) -> Result<()>;
 }
