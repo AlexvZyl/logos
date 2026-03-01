@@ -11,7 +11,6 @@ mod prelude;
 use crate::app::events::KeyMap;
 use crate::app::state::AppStateEnum;
 use crate::app::state_startup_screen::StartupScreen;
-use crate::config::MIN_TICK_RATE_MS;
 use crate::prelude::*;
 use crossterm::event::{self, KeyEventKind};
 use env_logger::{Env, Target};
