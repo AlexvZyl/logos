@@ -1,4 +1,4 @@
-use crossterm::event::KeyCode;
+use crossterm::event::{KeyCode, KeyModifiers};
 use std::collections::HashMap;
 
 pub enum AppEvent {
@@ -20,25 +20,36 @@ pub enum UserAction {
     MoveDown,
     IncrementWindow,
     DecrementWindow,
+    /// `usize`: The index of the window.
+    JumpToWindow(usize),
 }
 
 /// Mappings of keys -> actions.
 ///
 /// TODO: This should go to a config file.
-pub struct KeyMap(HashMap<KeyCode, UserAction>);
+pub struct KeyMap(HashMap<(KeyCode, KeyModifiers), UserAction>);
 
 impl KeyMap {
     pub fn default() -> Self {
         let mut map = HashMap::new();
-        map.insert(KeyCode::Char('q'), UserAction::Quit);
-        map.insert(KeyCode::Char('j'), UserAction::MoveDown);
-        map.insert(KeyCode::Char('k'), UserAction::MoveUp);
-        map.insert(KeyCode::Tab, UserAction::IncrementWindow);
-        map.insert(KeyCode::BackTab, UserAction::DecrementWindow);
+        let none = KeyModifiers::NONE;
+        map.insert((KeyCode::Char('q'), none), UserAction::Quit);
+        map.insert((KeyCode::Char('j'), none), UserAction::MoveDown);
+        map.insert((KeyCode::Char('k'), none), UserAction::MoveUp);
+        map.insert((KeyCode::Tab, none), UserAction::IncrementWindow);
+        map.insert(
+            (KeyCode::BackTab, KeyModifiers::SHIFT),
+            UserAction::DecrementWindow,
+        );
+        map.insert((KeyCode::Char('1'), none), UserAction::JumpToWindow(0));
+        map.insert((KeyCode::Char('2'), none), UserAction::JumpToWindow(1));
+        map.insert((KeyCode::Char('3'), none), UserAction::JumpToWindow(2));
+        map.insert((KeyCode::Char('4'), none), UserAction::JumpToWindow(3));
+        map.insert((KeyCode::Char('5'), none), UserAction::JumpToWindow(4));
         KeyMap(map)
     }
 
-    pub fn get(&self, key: &KeyCode) -> Option<UserAction> {
-        self.0.get(key).copied()
+    pub fn get(&self, key: &KeyCode, modifiers: KeyModifiers) -> Option<UserAction> {
+        self.0.get(&(*key, modifiers)).copied()
     }
 }

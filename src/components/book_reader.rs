@@ -156,7 +156,7 @@ impl Component for BookReader {
         let block = Block::default()
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
-            .title(format!(" {} ", self.current_book_name).yellow().bold())
+            .title(format!(" [2] {} ", self.current_book_name).yellow().bold())
             .border_style(if self.focused {
                 Style::default().blue()
             } else {

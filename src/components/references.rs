@@ -26,7 +26,7 @@ impl Component for References {
         let block = Block::default()
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
-            .title(" References ".yellow().bold())
+            .title(" [3] References ".yellow().bold())
             .border_style(if self.focused {
                 Style::default().blue()
             } else {

@@ -21,7 +21,10 @@ impl Component for SplashScreen {
         let version = Paragraph::new(format!("v{VERSION}"))
             .alignment(Alignment::Center)
             .bold()
-            .italic();
+            .italic()
+            .light_green();
+
+        let prompt = Paragraph::new(format!("Press any key to enter")).alignment(Alignment::Center);
 
         let chunks = Layout::default()
             .direction(Direction::Vertical)
@@ -29,11 +32,13 @@ impl Component for SplashScreen {
                 Constraint::Fill(1),
                 Constraint::Length(8),
                 Constraint::Length(1),
+                Constraint::Length(1),
                 Constraint::Fill(1),
             ])
             .split(rect);
 
         big_text.render(chunks[1], buf);
         version.render(chunks[2], buf);
+        prompt.render(chunks[4], buf);
     }
 }

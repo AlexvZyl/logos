@@ -74,7 +74,7 @@ impl Component for BooksView {
         let block = Block::default()
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
-            .title(" Books ".yellow().bold())
+            .title(" [1] Books ".yellow().bold())
             .border_style(if self.focused {
                 Style::default().blue()
             } else {

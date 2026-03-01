@@ -1,15 +1,15 @@
 use crate::app::data::PersistentAppData;
 use crate::app::events::{AppEvent, UserAction};
 use crate::app::state::{AppStateEnum, AppStateTrait};
+use crate::components::Component;
 use crate::components::book_reader::BookReader;
 use crate::components::books_view::BooksView;
 use crate::components::footer::LogosFooter;
 use crate::components::references::References;
 use crate::components::strongs::Strongs;
-use crate::components::Component;
 use crate::prelude::*;
-use ratatui::layout::{Constraint, Layout};
 use ratatui::Frame;
+use ratatui::layout::{Constraint, Layout};
 
 #[derive(Clone, Copy, PartialEq)]
 enum FocusedWindow {
@@ -98,6 +98,15 @@ impl AppStateTrait for DefaultReader {
             }
             AppEvent::UserAction(UserAction::DecrementWindow) => {
                 self.focus(self.focused.prev());
+            }
+            AppEvent::UserAction(UserAction::JumpToWindow(i)) => {
+                self.focus(match i {
+                    0 => FocusedWindow::Books,
+                    1 => FocusedWindow::Reader,
+                    2 => FocusedWindow::References,
+                    3 => FocusedWindow::Strongs,
+                    _ => self.focused,
+                });
             }
             AppEvent::UserAction(UserAction::MoveDown | UserAction::MoveUp) => match self.focused {
                 FocusedWindow::Books => {
