@@ -1,7 +1,9 @@
 pub mod book_reader;
 pub mod books_view;
 pub mod footer;
+pub mod references;
 pub mod splash_screen;
+pub mod strongs;
 
 use crate::app::events::AppEvent;
 use crate::prelude::*;

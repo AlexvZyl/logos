@@ -16,7 +16,7 @@ pub enum UserAction {
     MoveUp,
     MoveDown,
     IncrementWindow,
-    // TODO: Probably need a decrement window as well.
+    DecrementWindow,
 }
 
 pub struct KeyMap(HashMap<KeyCode, UserAction>);
@@ -29,6 +29,7 @@ impl KeyMap {
         map.insert(KeyCode::Char('j'), UserAction::MoveDown);
         map.insert(KeyCode::Char('k'), UserAction::MoveUp);
         map.insert(KeyCode::Tab, UserAction::IncrementWindow);
+        map.insert(KeyCode::BackTab, UserAction::DecrementWindow);
         KeyMap(map)
     }
 
