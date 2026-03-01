@@ -91,7 +91,7 @@ impl Column {
             }
 
             current_column.chapters.push(current_chapter);
-            remaining_chars -= width; // Newline.
+            remaining_chars = remaining_chars.saturating_sub(width); // Newline
         }
 
         Ok((current_column, None))
