@@ -114,7 +114,12 @@ impl Bible {
         };
         info!("Loaded {:?} in {:?}", path, start.elapsed());
 
-        let raw = raw.replace(['\t', '\n', '\r'], " ");
+        // TODO: Refactor this into some other class of something.
+        // Clean the data.
+        let raw = raw.replace("\n ", " ").replace(['\n', '\r', '\t'], "");
+        // Remove large whitespace regions.
+        let raw = raw.split_whitespace().collect::<Vec<_>>().join(" ");
+
         let index = Self::build_index(&raw)?;
         return Ok(Bible {
             disk_file: path.to_path_buf(),

@@ -122,7 +122,7 @@ impl Component for Column {
         let mut lines: Vec<Line> = Vec::new();
 
         for (i, chapter) in self.chapters.iter().enumerate() {
-            if chapter.show_heading {
+            if chapter.show_heading && !chapter.verses.is_empty() {
                 if i > 0 {
                     lines.push(Line::raw(""));
                 }
@@ -131,9 +131,10 @@ impl Component for Column {
                     Style::default().italic().blue(),
                 ));
             }
+
             let mut spans: Vec<Span> = Vec::new();
             for verse in &chapter.verses {
-                if verse.show_number {
+                if verse.show_number && !verse.text.is_empty() {
                     spans.push(Span::styled(
                         format!("{} ", verse.number),
                         Style::default().dark_gray(),
