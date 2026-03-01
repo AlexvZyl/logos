@@ -17,7 +17,6 @@ use crossterm::event::{self, KeyEventKind};
 use env_logger::{Env, Target};
 use ratatui::DefaultTerminal;
 use std::fs::OpenOptions;
-use std::time::Instant;
 
 fn setup_logging() {
     let log_dir = dirs::data_local_dir().expect("failed to resolve local data directory");
@@ -34,7 +33,6 @@ fn setup_logging() {
 }
 
 fn app_loop(terminal: &mut DefaultTerminal) -> Result<()> {
-    let mut last_tick = Instant::now();
     let keymap = KeyMap::default();
     terminal.clear()?;
 
@@ -47,26 +45,18 @@ fn app_loop(terminal: &mut DefaultTerminal) -> Result<()> {
     loop {
         terminal.draw(|f| state.render(f).expect("render failed"))?;
 
-        // Poll for events.
-        let timeout = MIN_TICK_RATE_MS.saturating_sub(last_tick.elapsed());
-        if event::poll(timeout)? {
-            if let event::Event::Key(key) = event::read()? {
-                if key.kind != KeyEventKind::Press {
-                    continue;
-                }
-                if let Some(action) = keymap.get(&key.code) {
-                    state = state.update(AppEvent::UserAction(action))?;
-                }
+        if let event::Event::Key(key) = event::read()? {
+            if key.kind != KeyEventKind::Press {
+                continue;
+            }
+            if let Some(action) = keymap.get(&key.code) {
+                state = state.update(AppEvent::UserAction(action))?;
             }
         }
 
         if matches!(state, AppStateEnum::Exit) {
             break;
         }
-
-        // Pass tick along.
-        state = state.update(AppEvent::Tick(last_tick.elapsed().as_millis() as usize))?;
-        last_tick = Instant::now();
     }
 
     Ok(())

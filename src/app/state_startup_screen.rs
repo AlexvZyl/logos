@@ -35,18 +35,13 @@ impl AppStateTrait for StartupScreen {
             AppEvent::AppStart => {
                 self.app_data = Some(PersistentAppData::from_translation("KVJ")?);
             }
-            AppEvent::Tick(_) => {
-                if self.start.elapsed() > MIN_SPLASH_SCREEN_TIME {
-                    return DefaultReader::from_state(AppStateEnum::Opening(self));
-                }
-            }
             AppEvent::UserAction(action) => match action {
                 UserAction::Quit => return Ok(AppStateEnum::Exit),
                 _ => {}
             },
-            AppEvent::Focus | AppEvent::Defocus => {}
+            _ => {}
         }
-        return Ok(AppStateEnum::Opening(self));
+        return DefaultReader::from_state(AppStateEnum::Opening(self));
     }
 
     fn render(&mut self, f: &mut Frame) -> Result<()> {

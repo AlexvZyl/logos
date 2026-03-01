@@ -4,9 +4,6 @@ use std::collections::HashMap;
 pub enum AppEvent {
     /// Special event fired at start of app.
     AppStart,
-    /// Time in ms since last tick.
-    /// This can be used to drive some behavior without events.
-    Tick(usize),
     /// Action performed/requested by the user.
     UserAction(UserAction),
     Focus,

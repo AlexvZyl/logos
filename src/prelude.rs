@@ -2,8 +2,6 @@ pub use crate::app::events::AppEvent;
 pub use crate::config::*;
 pub use crate::error::{Error, Result};
 
-pub use log::{debug, error, info, trace, warn};
-
 pub use std::collections::HashMap;
 pub use std::path::{Path, PathBuf};
 pub use std::sync::Arc;
@@ -16,3 +14,5 @@ pub use ratatui::{
     text::{Line, Span},
     widgets::{Paragraph, Widget},
 };
+
+pub use log::{debug, error, info, trace, warn};
