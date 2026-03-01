@@ -23,7 +23,9 @@ impl Component for SplashScreen {
             .bold()
             .dark_gray();
 
-        let prompt = Paragraph::new(format!("Press any key to enter")).italic().alignment(Alignment::Center);
+        let prompt = Paragraph::new(format!("Press any key to enter"))
+            .italic()
+            .alignment(Alignment::Center);
 
         let chunks = Layout::default()
             .direction(Direction::Vertical)
