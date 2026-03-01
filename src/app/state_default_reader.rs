@@ -12,7 +12,7 @@ use ratatui::Frame;
 use ratatui::layout::{Constraint, Layout};
 
 #[derive(Clone, Copy, PartialEq)]
-enum FocusedWindow {
+pub enum FocusedWindow {
     Books,
     Reader,
     References,
@@ -40,13 +40,13 @@ impl FocusedWindow {
 }
 
 pub struct DefaultReader {
-    app_data: PersistentAppData,
-    books_view: BooksView,
-    book_reader: BookReader,
-    footer: LogosFooter,
-    references: References,
-    strongs: Strongs,
-    focused: FocusedWindow,
+    pub app_data: PersistentAppData,
+    pub books_view: BooksView,
+    pub book_reader: BookReader,
+    pub footer: LogosFooter,
+    pub references: References,
+    pub strongs: Strongs,
+    pub focused: FocusedWindow,
 }
 
 impl DefaultReader {

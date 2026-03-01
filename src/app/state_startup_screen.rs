@@ -8,9 +8,9 @@ use crate::prelude::*;
 use ratatui::Frame;
 
 pub struct StartupScreen {
-    app_data: Option<PersistentAppData>,
-    start: Instant,
-    splash: SplashScreen,
+    pub app_data: Option<PersistentAppData>,
+    pub start: Instant,
+    pub splash: SplashScreen,
 }
 
 impl StartupScreen {
