@@ -3,6 +3,7 @@ use crate::app::events::UserAction;
 use crate::app::state::{AppStateEnum, AppStateTrait};
 use crate::app::state_default_reader::DefaultReader;
 use crate::components::Component;
+use crate::components::footer::LogosFooter;
 use crate::components::splash_screen::SplashScreen;
 use crate::prelude::*;
 use ratatui::Frame;
@@ -45,7 +46,14 @@ impl AppStateTrait for StartupScreen {
     }
 
     fn render(&mut self, f: &mut Frame) -> Result<()> {
-        self.splash.render(f.area(), f.buffer_mut());
+        let area = f.area();
+        let buf = f.buffer_mut();
+
+        let [main, footer] =
+            Layout::vertical([Constraint::Fill(1), Constraint::Length(1)]).areas(area);
+
+        self.splash.render(main, buf);
+        LogosFooter::new().render(footer, buf);
         Ok(())
     }
 
