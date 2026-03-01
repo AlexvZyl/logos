@@ -288,7 +288,6 @@ impl ColumnVerse {
         });
 
         consumptions.push((current_consumption, current_raw_text_size));
-        debug!("{:?}", consumptions);
         consumptions
     }
 

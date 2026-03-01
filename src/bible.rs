@@ -114,7 +114,7 @@ impl Bible {
         };
         info!("Loaded {:?} in {:?}", path, start.elapsed());
 
-        let raw = raw.replace(['\n', '\r'], "");
+        let raw = raw.replace(['\t', '\n', '\r'], " ");
         let index = Self::build_index(&raw)?;
         return Ok(Bible {
             disk_file: path.to_path_buf(),
