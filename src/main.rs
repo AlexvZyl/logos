@@ -8,11 +8,11 @@ mod error;
 mod filesystem;
 mod prelude;
 
-use crate::app::events::{KeyMap, UserAction};
+use crate::app::events::KeyMap;
 use crate::app::state::AppStateEnum;
 use crate::app::state_startup_screen::StartupScreen;
 use crate::prelude::*;
-use crossterm::event::{self, KeyCode, KeyEventKind, KeyModifiers};
+use crossterm::event::{self, KeyEventKind};
 use env_logger::{Env, Target};
 use ratatui::DefaultTerminal;
 use std::fs::OpenOptions;
