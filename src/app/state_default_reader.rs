@@ -31,7 +31,7 @@ impl AppStateTrait for DefaultReader {
             app_data,
             books_view,
             book_reader,
-            footer: LogosFooter,
+            footer: LogosFooter::new(),
         }))
     }
 

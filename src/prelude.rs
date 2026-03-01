@@ -9,8 +9,8 @@ pub use std::time::Instant;
 
 pub use ratatui::{
     buffer::Buffer,
-    layout::Rect,
-    style::{Color, Style},
+    layout::{Constraint, Layout, Rect},
+    style::{Color, Style, Stylize},
     text::{Line, Span},
     widgets::{Paragraph, Widget},
 };
