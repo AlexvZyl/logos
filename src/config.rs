@@ -15,4 +15,4 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 // TODO: Get from screen rate or config file.
 pub const TARGET_FRAMERATE: f64 = 120.0;
-pub const TARGET_FRAMETIME: Duration = Duration::from_millis((1000.0 / TARGET_FRAMERATE) as u64);
+pub const TARGET_FRAMETIME: Duration = Duration::from_micros((1000000.0 / TARGET_FRAMERATE) as u64);
