@@ -108,15 +108,6 @@ impl AppStateTrait for DefaultReader {
                     _ => self.focused,
                 });
             }
-            AppEvent::UserAction(UserAction::MoveDown | UserAction::MoveUp) => match self.focused {
-                FocusedWindow::Books => {
-                    self.books_view.update(&event);
-                    self.book_reader.set_book(self.books_view.selected_book());
-                }
-                FocusedWindow::Reader => self.book_reader.update(&event),
-                FocusedWindow::References => self.references.update(&event),
-                FocusedWindow::Strongs => self.strongs.update(&event),
-            },
             _ => {
                 self.books_view.update(&event);
                 self.book_reader.update(&event);
@@ -126,6 +117,7 @@ impl AppStateTrait for DefaultReader {
             }
         }
 
+        self.book_reader.set_book(self.books_view.selected_book());
         Ok(AppStateEnum::DefaultReader(self))
     }
 
