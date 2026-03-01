@@ -165,6 +165,7 @@ impl Bible {
                         index.entry(book.clone()).or_default();
                     }
                     awaiting_title = false;
+                    current_chapter = 1;
                 }
                 Ok(Event::Empty(ref e))
                     if e.name().as_ref() == b"chapter" && Self::has_attr(e, b"sID") =>
