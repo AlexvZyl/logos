@@ -3,8 +3,8 @@ use ratatui::widgets::{Block, BorderType, Borders};
 
 use crate::app::events::{AppEvent, UserAction};
 use crate::bible::Bible;
-use crate::components::book_column::Column;
 use crate::components::Component;
+use crate::components::book_column::Column;
 use crate::prelude::*;
 
 pub struct BookReader {
@@ -54,7 +54,7 @@ impl BookReader {
 
     /// TODO: Revisit.
     fn build_column(&self, width: usize, height: usize) -> Result<Column> {
-        let (first, _) = Column::from(
+        let (first, second) = Column::from(
             width,
             height,
             self.bible.as_ref(),
@@ -62,6 +62,7 @@ impl BookReader {
             1,
             None,
         )?;
+        debug!("{:?}", second);
         Ok(first)
     }
 }
@@ -100,7 +101,6 @@ impl Component for BookReader {
         let padded = Self::layout(block.inner(area), self.scrolled_offset, self.num_columns);
 
         block.render(area, buf);
-
         if self.column.is_none() || self.book_changed {
             self.column = Some(self.build_column(padded.width as usize, padded.height as usize)?);
             self.book_changed = false;

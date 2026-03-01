@@ -20,53 +20,76 @@ pub struct Bible {
     raw: String,
 }
 
-#[derive(Default, Debug)]
+#[derive(Debug)]
 pub struct Book {
     pub chapters: Vec<Chapter>,
 }
 
 impl Book {
+    pub fn new() -> Self {
+        Self {
+            chapters: Vec::new(),
+        }
+    }
+
     pub fn get_num_chapters(&self) -> usize {
         self.chapters.len()
     }
 
-    pub fn chapters_from(&self, chapter: usize) -> impl Iterator<Item = (usize, &Chapter)> {
-        self.chapters
-            .iter()
-            .enumerate()
-            .skip(chapter - 1)
-            .map(|(i, c)| (i + 1, c))
+    pub fn get_chapters(&self) -> impl Iterator<Item = &Chapter> {
+        self.chapters.iter()
     }
 }
 
-#[derive(Default, Debug)]
+impl Default for Book {
+    fn default() -> Self {
+        Self {
+            chapters: Vec::new(),
+        }
+    }
+}
+
+#[derive(Debug)]
 pub struct Chapter {
+    pub number: usize,
     pub verses: Vec<VerseView>,
 }
 
 impl Chapter {
+    pub fn new(number: usize) -> Self {
+        Self {
+            number,
+            verses: Vec::new(),
+        }
+    }
     pub fn get_num_verses(&self) -> usize {
         self.verses.len()
     }
 
-    pub fn verses_from<'a>(
-        &'a self,
-        verse: usize,
-        raw: &'a str,
-    ) -> impl Iterator<Item = (usize, &str)> {
-        self.verses
-            .iter()
-            .enumerate()
-            .skip(verse - 1)
-            .flat_map(move |(i, v)| v.text.iter().map(move |&(s, e)| (i + 1, &raw[s..e])))
+    pub fn get_verses(&self) -> impl Iterator<Item = &VerseView> {
+        self.verses.iter()
     }
 }
 
 /// A non-owning view into the raw memory.
-#[derive(Default, Debug)]
+#[derive(Debug)]
 pub struct VerseView {
+    pub number: usize,
     /// (start, end) byte ranges of text regions in the raw data.
-    pub text: Vec<(usize, usize)>,
+    pub indices: Vec<(usize, usize)>,
+}
+
+impl VerseView {
+    pub fn new(number: usize) -> Self {
+        Self {
+            number,
+            indices: Vec::new(),
+        }
+    }
+
+    pub fn to_string(&self, raw: &str) -> String {
+        self.indices.iter().map(move |&(s, e)| &raw[s..e]).collect()
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -105,7 +128,7 @@ impl Bible {
         &self.books
     }
 
-    pub fn raw(&self) -> &str {
+    pub fn get_raw_data(&self) -> &str {
         &self.raw
     }
 
@@ -115,41 +138,9 @@ impl Bible {
             .ok_or(Error::BookNotFound(name.to_string()))
     }
 
-    pub fn get_chapter_index(&self, name: &str, chapter: usize) -> Result<&Chapter> {
-        if chapter == 0 {
-            return Err(Error::ChapterNotFound(name.to_string(), chapter));
-        }
-
-        self.get_book_index(name)?
-            .chapters
-            .get(chapter - 1)
-            .ok_or(Error::ChapterNotFound(name.to_string(), chapter))
-    }
-
-    pub fn get_verse_index(&self, name: &str, chapter: usize, verse: usize) -> Result<&VerseView> {
-        if chapter == 0 {
-            return Err(Error::VerseNotFound(name.to_string(), chapter, verse));
-        }
-
-        self.get_chapter_index(name, chapter)?
-            .verses
-            .get(verse - 1)
-            .ok_or(Error::VerseNotFound(name.to_string(), chapter, verse))
-    }
-
-    pub fn get_verse_iter(
-        &self,
-        name: &str,
-        chapter: usize,
-        verse: usize,
-    ) -> Result<impl Iterator<Item = &str>> {
-        let v = self.get_verse_index(name, chapter, verse)?;
-        let raw = &self.raw;
-        Ok(v.text.iter().map(move |&(s, e)| &raw[s..e]))
-    }
-
     fn build_index(raw: &str) -> Result<IndexMap<String, Book>> {
         info!("Building bible index");
+
         let start = Instant::now();
         let mut index: IndexMap<String, Book> = IndexMap::new();
         let mut reader = Reader::from_str(raw);
@@ -158,6 +149,8 @@ impl Bible {
         let mut book = String::new();
         let mut awaiting_title = false;
         let mut in_verse = false;
+        let mut current_chapter = 1;
+        let mut current_verse = 1;
 
         loop {
             match reader.read_event_into(&mut buf) {
@@ -180,14 +173,17 @@ impl Bible {
                         .entry(book.clone())
                         .or_default()
                         .chapters
-                        .push(Chapter::default());
+                        .push(Chapter::new(current_chapter));
+                    current_chapter += 1;
+                    current_verse = 1;
                 }
                 Ok(Event::Empty(ref e))
                     if e.name().as_ref() == b"verse" && Self::has_attr(e, b"sID") =>
                 {
                     in_verse = true;
                     if let Some(ch) = index.get_mut(&book).and_then(|b| b.chapters.last_mut()) {
-                        ch.verses.push(VerseView::default());
+                        ch.verses.push(VerseView::new(current_verse));
+                        current_verse += 1;
                     }
                 }
                 Ok(Event::Empty(ref e))
@@ -205,7 +201,7 @@ impl Bible {
                             .and_then(|b| b.chapters.last_mut())
                             .and_then(|c| c.verses.last_mut())
                         {
-                            verse.text.push((start, end));
+                            verse.indices.push((start, end));
                         }
                     }
                 }

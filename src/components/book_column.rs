@@ -2,6 +2,7 @@ use crate::{bible::Bible, components::Component, prelude::*};
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
+#[derive(Debug)]
 pub struct Column {
     pub width: usize,
     pub height: usize,
@@ -30,7 +31,7 @@ impl Column {
 
         let book_index = bible.get_book_index(book)?;
 
-        for (chapter_num, chapter_data) in book_index.chapters_from(start_chapter) {
+        for chapter in book_index.get_chapters().skip(start_chapter - 1) {
             let separator = if current_column.chapters.is_empty() {
                 0
             } else {
@@ -43,7 +44,7 @@ impl Column {
 
             let mut current_chapter = ColumnChapter {
                 show_heading: true,
-                number: chapter_num,
+                number: chapter.number,
                 verses: Vec::new(),
             };
             let chapter_cost = current_chapter.consumed_chars(width);
@@ -53,18 +54,18 @@ impl Column {
             remaining_chars -= chapter_cost;
 
             let mut last_verse_num = 0;
-            for (verse_num, text) in chapter_data.verses_from(1, bible.raw()) {
+            for verse in chapter.get_verses() {
                 let current_verse = ColumnVerse {
-                    show_number: verse_num != last_verse_num,
-                    number: verse_num,
-                    text: text.to_string(),
+                    show_number: verse.number != last_verse_num,
+                    number: verse.number,
+                    text: verse.to_string(bible.get_raw_data()),
                 };
-                last_verse_num = verse_num;
-                let verse_cost = current_verse.consumed_chars(width);
+                last_verse_num = verse.number;
+                let verse_cost = current_verse.consumed_chars(width, 0);
 
                 // Entire verse does not fit.
                 if verse_cost > remaining_chars {
-                    let (first, second) = current_verse.split(width, remaining_chars);
+                    let (first, second) = current_verse.split(width, 0, remaining_chars);
                     current_chapter.verses.push(first);
                     current_column.chapters.push(current_chapter);
 
@@ -75,7 +76,7 @@ impl Column {
                             height: height,
                             chapters: vec![ColumnChapter {
                                 show_heading: false,
-                                number: chapter_num,
+                                number: chapter.number,
                                 verses: vec![verse],
                             }],
                         }),
@@ -154,6 +155,7 @@ impl Component for Column {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
+#[derive(Debug)]
 pub struct ColumnChapter {
     pub show_heading: bool,
     pub number: usize,
@@ -163,7 +165,7 @@ pub struct ColumnChapter {
 impl ColumnChapter {
     pub fn consumed_chars(&self, width: usize) -> usize {
         let header = if self.show_heading { width } else { 0 };
-        let verse_cost: usize = self.verses.iter().map(|v| v.consumed_chars(width)).sum();
+        let verse_cost: usize = self.verses.iter().map(|v| v.consumed_chars(width, 0)).sum();
 
         // The last verse will take the entire line.
         let remainder = match verse_cost % width {
@@ -180,12 +182,12 @@ impl ColumnChapter {
         let mut second_iter = self.verses.into_iter();
 
         for verse in second_iter.by_ref() {
-            let cost = verse.consumed_chars(width);
+            let cost = verse.consumed_chars(width, 0);
             if cost <= budget {
                 budget -= cost;
                 first.push(verse);
             } else {
-                let (a, b) = verse.split(width, budget);
+                let (a, b) = verse.split(width, 0, budget);
                 first.push(a);
                 let second: Vec<_> = b.into_iter().chain(second_iter).collect();
                 return (
@@ -220,6 +222,7 @@ impl ColumnChapter {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
+#[derive(Debug)]
 pub struct ColumnVerse {
     pub show_number: bool,
     pub number: usize,
@@ -229,45 +232,64 @@ pub struct ColumnVerse {
 impl ColumnVerse {
     /// Walks over the words in the verse and handles the wrapping logic.
     ///
-    /// Iterator gets (verse word, chars consumed by the word).
-    ///
-    /// If a word wraps, it will be seen as consuming the whitespace in the previous line.
-    pub fn walk_words(&self, width: usize) -> impl Iterator<Item = (&str, usize)> {
-        let initial = if self.show_number { 3 } else { 0 };
+    /// Iterator gets:
+    /// - verse word (no whitespace)
+    /// - chars consumed by the word, including:
+    ///     - whitespace for following word
+    ///     - whitespace to fill wrapping
+    pub fn walk_words(
+        &self,
+        width: usize,
+        starting_offset: usize,
+    ) -> impl Iterator<Item = (&str, usize)> {
+        let remaining = width - starting_offset - self.get_number_offset();
 
-        self.text.split_whitespace().scan(
-            (initial, width - initial),
-            move |(consumed, remaining), w| {
-                let prev = *consumed;
-                let space = if *remaining < width { 1 } else { 0 };
-                let needed = w.len() + space;
+        let nexts = self
+            .text
+            .split_whitespace()
+            .skip(1)
+            .map(Some)
+            .chain(std::iter::once(None));
 
-                // No wrap.
-                if needed <= *remaining {
-                    *consumed += needed;
-                    *remaining -= needed;
-                // Wrap.
-                } else {
-                    *consumed += *remaining + w.len();
+        self.text
+            .split_whitespace()
+            .zip(nexts)
+            .scan(remaining, move |remaining, (w, next)| {
+                if w.len() > *remaining {
+                    let cost = *remaining + w.len();
                     *remaining = width - w.len();
+                    Some((w, cost))
+                } else {
+                    *remaining -= w.len();
+                    let trailing = match next {
+                        None => 0,
+                        Some(next) if next.len() + 1 > *remaining => *remaining,
+                        Some(_) => 1,
+                    };
+                    *remaining -= trailing;
+                    Some((w, w.len() + trailing))
                 }
-
-                Some((w, *consumed - prev))
-            },
-        )
+            })
     }
 
-    pub fn consumed_chars(&self, width: usize) -> usize {
-        let initial = if self.show_number { 3 } else { 0 };
-        initial + self.walk_words(width).map(|(_, c)| c).sum::<usize>()
+    pub fn consumed_chars(&self, width: usize, starting_offset: usize) -> usize {
+        let words: Vec<_> = self.walk_words(width, starting_offset).collect();
+        for (w, c) in &words {
+            log::debug!("{:?} cost={}", w, c);
+        }
+        self.get_number_offset() + words.iter().map(|(_, c)| c).sum::<usize>()
     }
 
-    pub fn split(self, width: usize, budget: usize) -> (ColumnVerse, Option<ColumnVerse>) {
-        let initial = if self.show_number { 3 } else { 0 };
-        let mut consumed = initial;
+    pub fn split(
+        self,
+        width: usize,
+        starting_offset: usize,
+        budget: usize,
+    ) -> (ColumnVerse, Option<ColumnVerse>) {
+        let mut consumed = 0;
         let mut split_byte = 0;
 
-        for (word, cost) in self.walk_words(width) {
+        for (word, cost) in self.walk_words(width, starting_offset) {
             if consumed + cost > budget {
                 break;
             }
@@ -292,6 +314,17 @@ impl ColumnVerse {
                 })
             },
         )
+    }
+
+    fn get_number_offset(&self) -> usize {
+        match self.show_number {
+            false => 0,
+            true if self.number == 1 => 2,
+            true => {
+                let digits = self.number.checked_ilog10().unwrap_or(0) as usize + 1;
+                digits + 1
+            }
+        }
     }
 }
 
