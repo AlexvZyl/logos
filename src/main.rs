@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 mod app;
 mod bible;
 mod components;
@@ -45,15 +43,13 @@ fn app_loop(terminal: &mut DefaultTerminal) -> Result<()> {
 
     let keymap = KeyMap::default();
     loop {
-        // Wait for event.
+        // Wait indefinitely for event.
+        // TODO: I really want some kind of tick mechanism.
         event::poll(Duration::MAX)?;
-        let start = Instant::now();
 
-        // Process all events.  This prevents rendering from falling behind.
-        // Using frametime here so that we batch events before rendering for when there is a lot of
-        // event. For example, scrolling with low key-repeat time.
         loop {
-            if !event::poll(TARGET_FRAMETIME.saturating_sub(start.elapsed()))? {
+            // Only stop processing when no events are left.
+            if !event::poll(Duration::ZERO)? {
                 break;
             }
 
@@ -69,10 +65,12 @@ fn app_loop(terminal: &mut DefaultTerminal) -> Result<()> {
             }
 
             if matches!(state, AppStateEnum::Exit) {
+                info!("Exiting");
                 return Ok(());
             }
         }
 
+        // TODO: I want rendering statistics.
         terminal.draw(|f| {
             let _ = state.render(f).inspect_err(|e| error!("{e}"));
         })?;
