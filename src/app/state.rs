@@ -1,6 +1,6 @@
 use crate::app::data::PersistentAppData;
 use crate::app::state_default_reader::DefaultReader;
-use crate::app::state_startup_screen::StartupScreen;
+use crate::app::state_dashboard::Dashboard;
 use crate::prelude::*;
 use ratatui::Frame;
 
@@ -12,7 +12,7 @@ pub trait AppStateTrait {
 }
 
 pub enum AppStateEnum {
-    Opening(StartupScreen),
+    Dashboard(Dashboard),
     DefaultReader(DefaultReader),
     Exit,
 }
@@ -20,7 +20,7 @@ pub enum AppStateEnum {
 impl AppStateEnum {
     pub fn get_app_data(self) -> PersistentAppData {
         match self {
-            AppStateEnum::Opening(s) => s.get_app_data(),
+            AppStateEnum::Dashboard(s) => s.get_app_data(),
             AppStateEnum::DefaultReader(s) => s.get_app_data(),
             AppStateEnum::Exit => {
                 panic!("Exit should not request data")
@@ -30,7 +30,7 @@ impl AppStateEnum {
 
     pub fn update(self, event: AppEvent) -> Result<AppStateEnum> {
         match self {
-            AppStateEnum::Opening(s) => s.update(event),
+            AppStateEnum::Dashboard(s) => s.update(event),
             AppStateEnum::DefaultReader(s) => s.update(event),
             AppStateEnum::Exit => {
                 panic!("Exit should not update")
@@ -40,7 +40,7 @@ impl AppStateEnum {
 
     pub fn render(&mut self, f: &mut Frame) -> Result<()> {
         match self {
-            AppStateEnum::Opening(s) => s.render(f),
+            AppStateEnum::Dashboard(s) => s.render(f),
             AppStateEnum::DefaultReader(s) => s.render(f),
             AppStateEnum::Exit => {
                 panic!("Exit should not render")

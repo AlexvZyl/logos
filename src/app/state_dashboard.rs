@@ -3,20 +3,19 @@ use crate::app::events::UserAction;
 use crate::app::state::{AppStateEnum, AppStateTrait};
 use crate::app::state_default_reader::DefaultReader;
 use crate::components::Component;
-use crate::components::footer::LogosFooter;
 use crate::components::splash_screen::SplashScreen;
 use crate::prelude::*;
 use ratatui::Frame;
 
-pub struct StartupScreen {
+pub struct Dashboard {
     pub app_data: Option<PersistentAppData>,
     pub start: Instant,
     pub splash: SplashScreen,
 }
 
-impl StartupScreen {
+impl Dashboard {
     pub fn new() -> Self {
-        StartupScreen {
+        Dashboard {
             app_data: None,
             start: Instant::now(),
             splash: SplashScreen,
@@ -24,7 +23,7 @@ impl StartupScreen {
     }
 }
 
-impl AppStateTrait for StartupScreen {
+impl AppStateTrait for Dashboard {
     fn from_state(_: AppStateEnum) -> Result<AppStateEnum> {
         panic!("Should never go from a state to OpeningState");
     }
@@ -38,22 +37,21 @@ impl AppStateTrait for StartupScreen {
             }
             AppEvent::UserAction(action) => match action {
                 UserAction::Quit => return Ok(AppStateEnum::Exit),
+                UserAction::OpenReader => {
+                    return DefaultReader::from_state(AppStateEnum::Dashboard(self));
+                }
                 _ => {}
             },
             _ => {}
         }
-        return DefaultReader::from_state(AppStateEnum::Opening(self));
+        return Ok(AppStateEnum::Dashboard(self));
     }
 
     fn render(&mut self, f: &mut Frame) -> Result<()> {
         let area = f.area();
         let buf = f.buffer_mut();
 
-        let [main, footer] =
-            Layout::vertical([Constraint::Fill(1), Constraint::Length(1)]).areas(area);
-
-        self.splash.render(main, buf)?;
-        LogosFooter::new().render(footer, buf)?;
+        self.splash.render(area, buf)?;
         Ok(())
     }
 

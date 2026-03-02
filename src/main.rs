@@ -10,7 +10,7 @@ mod prelude;
 
 use crate::app::events::KeyMap;
 use crate::app::state::AppStateEnum;
-use crate::app::state_startup_screen::StartupScreen;
+use crate::app::state_dashboard::Dashboard;
 use crate::prelude::*;
 use crossterm::event::{self, KeyEventKind};
 use env_logger::{Env, Target};
@@ -37,7 +37,7 @@ fn app_loop(terminal: &mut DefaultTerminal) -> Result<()> {
     info!("Target frametime: {TARGET_FRAMETIME:?}");
 
     // Special startup logic.
-    let mut state = AppStateEnum::Opening(StartupScreen::new());
+    let mut state = AppStateEnum::Dashboard(Dashboard::new());
     terminal.draw(|f| {
         let _ = state.render(f).inspect_err(|e| error!("{e}"));
     })?;
