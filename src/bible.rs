@@ -32,10 +32,6 @@ impl Book {
         }
     }
 
-    pub fn get_num_chapters(&self) -> usize {
-        self.chapters.len()
-    }
-
     pub fn get_chapters(&self) -> impl Iterator<Item = &Chapter> {
         self.chapters.iter()
     }
@@ -61,9 +57,6 @@ impl Chapter {
             number,
             verses: Vec::new(),
         }
-    }
-    pub fn get_num_verses(&self) -> usize {
-        self.verses.len()
     }
 
     pub fn get_verses(&self) -> impl Iterator<Item = &VerseView> {

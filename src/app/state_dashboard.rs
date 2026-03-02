@@ -9,7 +9,6 @@ use ratatui::Frame;
 
 pub struct Dashboard {
     pub app_data: Option<PersistentAppData>,
-    pub start: Instant,
     pub splash: SplashScreen,
 }
 
@@ -17,7 +16,6 @@ impl Dashboard {
     pub fn new() -> Self {
         Dashboard {
             app_data: None,
-            start: Instant::now(),
             splash: SplashScreen,
         }
     }
