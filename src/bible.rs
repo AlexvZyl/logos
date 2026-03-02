@@ -90,6 +90,7 @@ impl VerseView {
 impl Bible {
     pub fn from_translation(translation: &str) -> Result<Bible> {
         let file = get_translations()
+            // TODO: Select translation from UI.
             .get("KJV")
             .ok_or(Error::UnsupprtedTranslation(translation.to_string()))?;
         Bible::from_file(file)
@@ -107,10 +108,9 @@ impl Bible {
         };
         info!("Loaded {:?} in {:?}", path, start.elapsed());
 
-        // TODO: Refactor this into some other class of something.
-        // Clean the data.
-        let raw = raw.replace("\n ", " ").replace(['\n', '\r', '\t'], "");
-        // Remove large whitespace regions.
+        // There seems to be some groups of whitespaces in the data.  I guess the file is just
+        // dirty.
+        // TODO: Investigate and move this logic out.
         let raw = raw.split_whitespace().collect::<Vec<_>>().join(" ");
 
         let index = Self::build_index(&raw)?;
