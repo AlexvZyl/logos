@@ -1,6 +1,6 @@
 use crate::app::data::PersistentAppData;
-use crate::app::state_default_reader::DefaultReader;
 use crate::app::state_dashboard::Dashboard;
+use crate::app::state_default_reader::DefaultReader;
 use crate::prelude::*;
 use ratatui::Frame;
 

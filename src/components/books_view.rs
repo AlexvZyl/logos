@@ -10,16 +10,17 @@ pub struct BooksView {
     scrolled_offset: usize,
     focused: bool,
 
-    // Pre-built lines to reduce cost of rendering.
-    all_lines: Vec<Line<'static>>,
+    // Pre-built cache lines to reduce cost of rendering.
+    // TODO: Revisit this.
+    unselected_lines: Vec<Line<'static>>,
     selected_lines: Vec<Line<'static>>,
 }
 
 impl BooksView {
     pub fn new(books: Vec<String>) -> Self {
-        let all_lines = BooksView::build_all_lines(&books, "   ");
+        let all_lines = BooksView::build_line_cache(&books, "   ");
         // TODO: Only use nerd font icons if available.
-        let selected_lines = BooksView::build_all_lines(&books, "  ")
+        let selected_lines = BooksView::build_line_cache(&books, "  ")
             .into_iter()
             .map(|l| l.cyan().bold())
             .collect();
@@ -28,7 +29,7 @@ impl BooksView {
             selected_book_index: 0,
             scrolled_offset: 0,
             focused: false,
-            all_lines,
+            unselected_lines: all_lines,
             selected_lines,
         }
     }
@@ -41,7 +42,7 @@ impl BooksView {
         self.focused
     }
 
-    fn build_all_lines(books: &Vec<String>, prefix: &str) -> Vec<Line<'static>> {
+    fn build_line_cache(books: &Vec<String>, prefix: &str) -> Vec<Line<'static>> {
         books
             .iter()
             .map(|b| Line::from(format!("{}{}", prefix, b)))
@@ -86,6 +87,7 @@ impl Component for BooksView {
         let inner = block.inner(area);
         block.render(area, buf);
 
+        // Scrolling logic.
         let visible = inner.height as usize;
         let min_index = self.scrolled_offset;
         let max_index = self.scrolled_offset + visible - 1;
@@ -112,7 +114,7 @@ impl Component for BooksView {
             let line = if i == self.selected_book_index {
                 &self.selected_lines[i]
             } else {
-                &self.all_lines[i]
+                &self.unselected_lines[i]
             };
             buf.set_line(line_area.x, line_area.y, line, line_area.width);
         }

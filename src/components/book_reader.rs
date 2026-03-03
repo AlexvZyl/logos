@@ -54,14 +54,13 @@ impl BookReader {
 
     /// TODO: Revisit.
     fn build_column(&self, width: usize, height: usize) -> Result<Column> {
-        let (first, second) = Column::from(
+        let (first, second) = Column::new(
             width,
             height,
             self.bible.as_ref(),
-            &self.current_book_name,
-            1,
+            &self.bible.get_book(&self.current_book_name).chapters[0],
             None,
-        )?;
+        );
         debug!("{:?}", second);
         Ok(first)
     }

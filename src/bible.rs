@@ -20,7 +20,16 @@ pub struct Bible {
     raw: String,
 }
 
-#[derive(Debug)]
+impl Bible {
+    pub fn get_book(&self, book_name: &str) -> Book {
+        // TODO: Don't like the clone and unwrap.
+        self.index.get(book_name).unwrap().clone()
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#[derive(Debug, Clone)]
 pub struct Book {
     pub chapters: Vec<Chapter>,
 }
@@ -45,7 +54,9 @@ impl Default for Book {
     }
 }
 
-#[derive(Debug)]
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#[derive(Debug, Clone)]
 pub struct Chapter {
     pub number: usize,
     pub verses: Vec<VerseView>,
@@ -64,8 +75,10 @@ impl Chapter {
     }
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
 /// A non-owning view into the raw memory.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct VerseView {
     pub number: usize,
     /// (start, end) byte ranges of text regions in the raw data.
@@ -80,7 +93,10 @@ impl VerseView {
         }
     }
 
-    pub fn to_string(&self, raw: &str) -> String {
+    // TODO: Don't really like that you have to pass in the raw.
+    // Collect all of these types (Bible, chapter, verse) into a single
+    // struct with references.
+    pub fn collect_string(&self, raw: &str) -> String {
         self.indices.iter().map(move |&(s, e)| &raw[s..e]).collect()
     }
 }
@@ -113,7 +129,7 @@ impl Bible {
         // TODO: Investigate and move this logic out.
         let raw = raw.split_whitespace().collect::<Vec<_>>().join(" ");
 
-        let index = Self::build_index(&raw)?;
+        let index = Self::build_index_from_osis(&raw)?;
         return Ok(Bible {
             disk_file: path.to_path_buf(),
             books: index.keys().cloned().collect(),
@@ -137,7 +153,7 @@ impl Bible {
             .ok_or(Error::BookNotFound(name.to_string()))
     }
 
-    fn build_index(raw: &str) -> Result<IndexMap<String, Book>> {
+    fn build_index_from_osis(raw: &str) -> Result<IndexMap<String, Book>> {
         info!("Building bible index");
 
         let start = Instant::now();

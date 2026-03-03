@@ -78,6 +78,7 @@ impl AppStateTrait for DefaultReader {
     fn from_state(state: AppStateEnum) -> Result<AppStateEnum> {
         let app_data = state.get_app_data();
         let books = app_data.bible.get_books().clone();
+        // TODO: Save/load from cache.
         let initial_book = &books[0];
 
         let book_reader = BookReader::new(app_data.bible.clone(), initial_book.to_string());
