@@ -19,21 +19,47 @@ impl Column {
         height: usize,
         bible: &Bible,
         start_chapter: &Chapter,
-        overflow: Option<Column>,
-    ) -> (Column, Option<Column>) {
-        // TODO: Handle this case.
-        assert!(overflow.is_none());
+        overflow: Option<ColumnChapter>,
+    ) -> (Column, Option<ColumnChapter>) {
+        let mut remaining_budget = width * height;
+        let mut chapters: Vec<ColumnChapter> = Vec::new();
 
-        let chapter = ColumnChapter::from_chapter_naive(bible, start_chapter, width);
+        if let Some(overflow) = overflow {
+            let cost = overflow.consumed_chars(width);
+            // Handle case where overflow does not fit.
+            if cost >= remaining_budget {
+                let (fit, remainder) = overflow.split(width, remaining_budget);
+                chapters.push(fit);
+                let column = Column {
+                    width,
+                    height,
+                    chapters,
+                };
+                return (column, remainder);
+            }
+            chapters.push(overflow);
+            remaining_budget -= cost;
+        }
 
-        (
-            Column {
-                width,
-                height,
-                chapters: Vec::from([chapter]),
-            },
-            None,
-        )
+        let remainder = None;
+        loop {
+            let chapter = ColumnChapter::from_chapter_naive(bible, start_chapter, width);
+            let (fit, remainder) = chapter.split(width, remaining_budget);
+
+            remaining_budget -= fit.consumed_chars(width);
+            chapters.push(fit);
+
+            if remainder.is_some() || remaining_budget == 0 {
+                break;
+            }
+        }
+
+        let column = Column {
+            width,
+            height,
+            chapters,
+        };
+        (column, remainder)
     }
 
     pub fn chars_consumed(&self) -> usize {
@@ -100,6 +126,7 @@ impl ColumnChapter {
             );
 
             // Need to split as we go.
+            debug!("{remainder:?}");
             loop {
                 let (first, next) = remainder.split_at_wrap(width, current_offset);
                 debug!("{first:?}");
@@ -123,10 +150,8 @@ impl ColumnChapter {
         let header = if self.show_heading { width } else { 0 };
         let verse_cost: usize = self.verses.iter().map(|v| v.consumed_chars(width, 0)).sum();
 
-        // The last verse will take the entire line.
-        let total = header + verse_cost + (verse_cost % width);
-        assert!(total % width == 0);
-        total
+        let padding = width - (verse_cost % width);
+        header + verse_cost + padding
     }
 
     pub fn split(self, width: usize, budget: usize) -> (ColumnChapter, Option<ColumnChapter>) {
@@ -209,63 +234,57 @@ pub struct ColumnVerseSegment {
 impl ColumnVerseSegment {
     /// Creates a naive verse without any splitting.
     pub fn new_naive(number: usize, text: &str) -> Self {
-        ColumnVerseSegment {
+        let val = ColumnVerseSegment {
             show_number: true,
             number,
-            text: text.to_string(),
-        }
+            text: text.trim_end().trim_start().to_string(),
+        };
+
+        debug!("new_naiv: {:?}", val.text);
+        val
     }
 
+    /// Calculates the verse rows crated by wrapping.  Each vec is a row.
+    ///
     /// Returns:
-    /// (Consumed region, raw text buffer size)
-    ///
-    /// The consumed region includes all of the whitespace required for rendering and wrapping of
-    /// text.  The raw size can be used to index into the raw memory region.
-    ///
-    /// Each entry in the vec represent a line rendered.
+    /// - The consumed chars for the row (including numbers and whitespace)
+    /// - The raw index that can be used to index into the existing string.
     ///
     /// WARN: This function is nasty.
-    pub fn get_consumption_regions(
+    pub fn calculate_verse_rows_from_wrapping(
         &self,
         width: usize,
         starting_offset: usize,
     ) -> Vec<(usize, usize)> {
-        let mut consumptions = Vec::new();
-        let mut current_raw_index_size = 0; // Used to index into memory.
-        let mut remaining_chars_in_line = width - starting_offset;
-        let mut current_consumption = 0;
+        // TODO: Tweak reserving.
+        let mut rows = Vec::new();
+        rows.reserve(10);
+
+        let mut current_string_index = 0; // Used to index into memory.
+        let mut remaining_chars_in_row = width - starting_offset;
+        let mut current_row_raw_size = 0;
 
         // This is 0 when the number won't be showed so no need for extra checking.
         // TODO: Currently this assumes the verse number can be split from the first word.
         // Decide what we want and revisit.
-        let number_consumption = self.get_number_consumption();
-        // Number does not fit (wraps).
-        if number_consumption > remaining_chars_in_line {
-            current_consumption += remaining_chars_in_line;
-            remaining_chars_in_line = width;
+        let number_size = self.get_number_char_size();
+        // Number does not fit, we need to leave it empty and wrap.
+        if number_size > remaining_chars_in_row {
+            rows.push((remaining_chars_in_row, 0));
+            remaining_chars_in_row = width - number_size;
+            current_row_raw_size = 0;
         }
         // Number does fit.
         // Number not part of raw text, so don't increase `current_raw_text_size`.
         else {
-            current_consumption += number_consumption;
-            remaining_chars_in_line -= number_consumption;
+            current_row_raw_size += number_size;
+            remaining_chars_in_row -= number_size;
         }
 
         // Now check words.
         let mut first_word_in_row = starting_offset == 0;
         self.text.split_whitespace().for_each(|word| {
             let word_len = word.len();
-
-            // Words are separated by spaces in the raw data so need to be very careful with this
-            // calculation.  The first word in the verse does not need a leading space, but the rest
-            // do (if we have to show the number it means we are at the first word).
-            let word_index_size = if self.show_number {
-                word_len
-            }
-            // If it is not the first word we need to account for the leading space.
-            else {
-                word_len + 1
-            };
 
             // The first word in the row does not need a leading whitespace,
             let word_consumption = if first_word_in_row {
@@ -275,37 +294,36 @@ impl ColumnVerseSegment {
             };
 
             // Check if word fits (no wrap).
-            if word_consumption <= remaining_chars_in_line {
-                current_consumption += word_consumption;
-                remaining_chars_in_line -= word_consumption;
-
-                current_raw_index_size += word_index_size;
+            if word_consumption <= remaining_chars_in_row {
+                current_row_raw_size += word_consumption;
+                remaining_chars_in_row -= word_consumption;
+                current_string_index += word_consumption;
                 first_word_in_row = false;
             }
             // Wrap.
             else {
                 // Consume trailing whitespace for previous word.
-                current_consumption += remaining_chars_in_line;
-                consumptions.push((current_consumption, current_raw_index_size));
+                current_row_raw_size += remaining_chars_in_row;
+                rows.push((current_row_raw_size, current_string_index));
 
                 // Reset, going to a new line.
-                remaining_chars_in_line = width;
+                remaining_chars_in_row = width - word_len;
 
                 // Usage on next line.
-                current_consumption = word_len; // No leading whitespace.
-                current_raw_index_size = word_index_size;
+                current_row_raw_size = word_len; // No leading whitespace.
+                current_string_index = word_consumption;
             }
         });
 
         // Push last consumption.  Do not use trailing whitespace, the next verse can fit.
-        consumptions.push((current_consumption, current_raw_index_size));
+        rows.push((current_row_raw_size, current_string_index));
 
-        consumptions
+        rows
     }
 
     /// This includes leading whitespace used by the verse, and not trailing whitespace.
     pub fn consumed_chars(&self, width: usize, starting_offset: usize) -> usize {
-        self.get_consumption_regions(width, starting_offset)
+        self.calculate_verse_rows_from_wrapping(width, starting_offset)
             .iter()
             .map(|(a, _)| a)
             .sum::<usize>()
@@ -320,20 +338,22 @@ impl ColumnVerseSegment {
         starting_offset: usize,
     ) -> (ColumnVerseSegment, Option<ColumnVerseSegment>) {
         let mut character_budget = width - starting_offset;
-        let mut raw_index = 0;
+        let mut accumulated_index = 0;
 
-        let regions = self.get_consumption_regions(width, starting_offset);
+        let regions = self.calculate_verse_rows_from_wrapping(width, starting_offset);
         // Find point where we have to split.
-        regions.iter().for_each(|(consumed, raw_size)| {
+        for (consumed, raw_index) in &regions {
             if *consumed <= character_budget {
-                character_budget -= *consumed;
-                raw_index += raw_size;
+                character_budget -= consumed;
+                accumulated_index += raw_index;
+            } else {
+                break;
             }
-        });
+        }
 
-        // Trim is important here as this is assumed in `get_consumption_regions`.
-        let first = self.text[..raw_index].trim_end().to_string();
-        let second = self.text[raw_index..].trim_start().to_string();
+        // Trimming here just to clean up.
+        let first = self.text[..accumulated_index].trim_end().to_string();
+        let second = self.text[accumulated_index..].trim_start().to_string();
 
         let remainder = match second.is_empty() {
             true => None,
@@ -383,7 +403,7 @@ impl ColumnVerseSegment {
     }
 
     // Includes leading whitespace.  Excludes trailing whitespace.
-    fn get_number_consumption(&self) -> usize {
+    fn get_number_char_size(&self) -> usize {
         match self.show_number {
             false => 0,
             true if self.number == 1 => 1,

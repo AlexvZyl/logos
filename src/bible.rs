@@ -97,7 +97,11 @@ impl VerseView {
     // Collect all of these types (Bible, chapter, verse) into a single
     // struct with references.
     pub fn collect_string(&self, raw: &str) -> String {
-        self.indices.iter().map(move |&(s, e)| &raw[s..e]).collect()
+        // There seems to be some groups of whitespaces in the data.  I guess the file is just
+        // dirty.
+        // TODO: Investigate and move this logic out.
+        let s: String = self.indices.iter().map(move |&(s, e)| &raw[s..e]).collect();
+        s.split_whitespace().collect::<Vec<_>>().join(" ")
     }
 }
 
@@ -123,11 +127,6 @@ impl Bible {
             return Err(Error::InvalidBibleFile);
         };
         info!("Loaded {:?} in {:?}", path, start.elapsed());
-
-        // There seems to be some groups of whitespaces in the data.  I guess the file is just
-        // dirty.
-        // TODO: Investigate and move this logic out.
-        let raw = raw.split_whitespace().collect::<Vec<_>>().join(" ");
 
         let index = Self::build_index_from_osis(&raw)?;
         return Ok(Bible {
