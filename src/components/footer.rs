@@ -13,7 +13,7 @@ impl LogosFooter {
         Self {
             // TODO: Check for these icons support before just rendering it.
             left_side: format!("   logos [{}]", VERSION),
-            right_side: String::from("q: quit "),
+            right_side: String::from("[q] quit "),
         }
     }
 }
