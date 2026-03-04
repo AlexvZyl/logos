@@ -52,16 +52,18 @@ impl BookReader {
             .split(area)[1]
     }
 
-    /// TODO: Revisit.
-    fn build_column(&self, width: usize, height: usize) -> Result<Column> {
-        let (first, second) = Column::new(
+    /// TODO: This function will have to be very smart.  Handle the different columns etc...
+    /// For now, just build one so that we can debug.
+    fn build_columns(&self, width: usize, height: usize) -> Result<Column> {
+        let (first, _second) = Column::new(
             width,
             height,
             self.bible.as_ref(),
             &self.bible.get_book(&self.current_book_name).chapters[0],
             None,
         );
-        debug!("{:?}", second);
+
+        // debug!("{:?}", second);
         Ok(first)
     }
 }
@@ -98,13 +100,17 @@ impl Component for BookReader {
             });
 
         let padded = Self::layout(block.inner(area), self.scrolled_offset, self.num_columns);
-
         block.render(area, buf);
+
         if self.column.is_none() || self.book_changed {
-            self.column = Some(self.build_column(padded.width as usize, padded.height as usize)?);
+            self.column = Some(self.build_columns(padded.width as usize, padded.height as usize)?);
             self.book_changed = false;
         }
-        self.column.as_mut().unwrap().render(padded, buf)?;
+        self.column
+            .as_mut()
+            .expect("Just created the column")
+            .render(padded, buf)?;
+
         Ok(())
     }
 }

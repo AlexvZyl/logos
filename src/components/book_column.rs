@@ -24,31 +24,32 @@ impl Column {
         let mut remaining_budget = width * height;
         let mut chapters: Vec<ColumnChapter> = Vec::new();
 
-        if let Some(overflow) = overflow {
-            let cost = overflow.consumed_chars(width);
-            // Handle case where overflow does not fit.
-            if cost >= remaining_budget {
-                let (fit, remainder) = overflow.split(width, remaining_budget);
-                chapters.push(fit);
-                let column = Column {
-                    width,
-                    height,
-                    chapters,
-                };
-                return (column, remainder);
-            }
-            chapters.push(overflow);
-            remaining_budget -= cost;
-        }
+        // TODO: Handle.
+        assert!(overflow.is_none());
 
         let remainder = None;
         loop {
             let chapter = ColumnChapter::from_chapter_naive(bible, start_chapter, width);
             let (fit, remainder) = chapter.split(width, remaining_budget);
 
-            remaining_budget -= fit.consumed_chars(width);
-            chapters.push(fit);
+            match fit {
+                None => {
+                    assert!(remainder.is_some());
+                    break;
+                }
 
+                Some(fit) => {
+                    let fit_consumed = fit.consumed_chars(width);
+                    debug!("consumed; {fit_consumed}");
+                    debug!("budhet: {remaining_budget}");
+                    chapters.push(fit);
+                    assert!(fit_consumed <= remaining_budget); // Fit can't be larger than the budet.
+                    remaining_budget -= fit_consumed;
+                    remaining_budget = remaining_budget.saturating_sub(width); // Newline.
+                }
+            }
+
+            // If we had to split, or there is no budget left, time to stop.
             if remainder.is_some() || remaining_budget == 0 {
                 break;
             }
@@ -86,6 +87,7 @@ impl Component for Column {
     fn render(&mut self, area: Rect, buf: &mut Buffer) -> Result<()> {
         let mut lines: Vec<Line> = Vec::new();
 
+        // TODO: Build
         for (i, chapter) in self.chapters.iter().enumerate() {
             if i > 0 {
                 lines.push(Line::raw(""));
@@ -126,11 +128,12 @@ impl ColumnChapter {
             );
 
             // Need to split as we go.
-            debug!("{remainder:?}");
             loop {
                 let (first, next) = remainder.split_at_wrap(width, current_offset);
-                debug!("{first:?}");
-                column_verses.push(first);
+                match first {
+                    None => break,
+                    Some(first) => column_verses.push(first),
+                };
                 match next {
                     None => break,
                     Some(r) => remainder = r,
@@ -154,38 +157,81 @@ impl ColumnChapter {
         header + verse_cost + padding
     }
 
-    pub fn split(self, width: usize, budget: usize) -> (ColumnChapter, Option<ColumnChapter>) {
+    /// TODO: Doc.
+    pub fn split(
+        self,
+        width: usize,
+        budget: usize,
+    ) -> (Option<ColumnChapter>, Option<ColumnChapter>) {
         // It does not makes sense for us to get a budget that is not `N * rows`.
-        assert!(width % budget == 0);
+        assert!(budget % width == 0);
         // Budget of 0 also does not makes sense.
         assert!(budget > 0);
 
         // If chapter fits into budget no split will occur.
-        if self.consumed_chars(width) < budget {
-            return (self, None);
+        if self.consumed_chars(width) <= budget {
+            return (Some(self), None);
+        }
+        // Need to be able to fit at least the header and a single verse.
+        if budget < (width * 2) {
+            return (None, Some(self));
         }
 
-        let number_verses = (budget - width) / width;
-        // Should at least be able to render one verse.
-        assert!(number_verses > 0);
-        // TODO: There is a lot of assumptions made here that the render logic also has to make.
-        // This separation makes me nervous.  Anyway...
+        let verses_clone = self.verses.clone(); // TODO: Fix.
+        let mut num_fitting_verses = 0;
+        let mut current_row_offset = 0;
+        let mut first_split: Option<ColumnVerseSegment> = None;
+        let mut second_split: Option<ColumnVerseSegment> = None;
 
-        let (first, second) = self.verses.split_at(number_verses - 1);
+        let mut remaining_budget = match self.show_heading {
+            false => budget,
+            true => budget - width,
+        };
+
+        for verse in self.verses {
+            let verse_chars = verse.consumed_chars(width, current_row_offset);
+
+            // Verse fits, no issues.
+            if verse_chars <= remaining_budget {
+                num_fitting_verses += 1;
+                current_row_offset = (current_row_offset + verse_chars) % width;
+                remaining_budget -= verse_chars;
+                continue;
+            }
+
+            debug!("verse chars: {verse_chars}");
+            debug!("remaining budget: {remaining_budget}");
+
+            // Verse did not fit, have to split.
+            (first_split, second_split) = verse.split_at_wrap(width, current_row_offset);
+            break;
+        }
+
+        let (first, second) = verses_clone.split_at(num_fitting_verses);
+        let mut first = first.to_vec();
+        debug!("{first:?}");
+        let mut second = second.to_vec();
+
+        if let Some(split) = first_split {
+            first.push(split);
+        }
+        debug!("{first:?}");
+        if let Some(split) = second_split {
+            debug!("before: {:?}", second[0]);
+            second[0] = split;
+            debug!("after: {:?}", second[0]);
+        }
 
         // TODO: I don't like the clones here.  Should be &str.
-        (
-            ColumnChapter {
-                show_heading: true,
-                number: self.number,
-                verses: first.to_vec(),
-            },
-            Some(ColumnChapter {
-                show_heading: false,
-                number: self.number,
-                verses: second.to_vec(),
-            }),
-        )
+        let to_chapter =
+            |verses: Vec<ColumnVerseSegment>, show_heading: bool| -> Option<ColumnChapter> {
+                (!verses.is_empty()).then(|| ColumnChapter {
+                    show_heading,
+                    number: self.number,
+                    verses,
+                })
+            };
+        (to_chapter(first, true), to_chapter(second, false))
     }
 
     pub fn build(&self) -> Vec<Line> {
@@ -207,6 +253,7 @@ impl ColumnChapter {
         let mut spans: Vec<Span> = Vec::new();
         // TODO: Tweak reserve.
         spans.reserve(25);
+
         for verse in &self.verses {
             let (number, text) = verse.build();
             if let Some(n) = number {
@@ -234,14 +281,11 @@ pub struct ColumnVerseSegment {
 impl ColumnVerseSegment {
     /// Creates a naive verse without any splitting.
     pub fn new_naive(number: usize, text: &str) -> Self {
-        let val = ColumnVerseSegment {
+        ColumnVerseSegment {
             show_number: true,
             number,
             text: text.trim_end().trim_start().to_string(),
-        };
-
-        debug!("new_naiv: {:?}", val.text);
-        val
+        }
     }
 
     /// Calculates the verse rows crated by wrapping.  Each vec is a row.
@@ -331,16 +375,23 @@ impl ColumnVerseSegment {
 
     /// Splits the verse where it wraps, returning the remainder.
     ///
+    /// NOTE: The second segment is not guaranteed to fit a row, check manually.
     /// NOTE: `character_budget` includes whitespace, i.e. it is the rendering budget.
     fn split_at_wrap(
         self,
         width: usize,
         starting_offset: usize,
-    ) -> (ColumnVerseSegment, Option<ColumnVerseSegment>) {
+    ) -> (Option<ColumnVerseSegment>, Option<ColumnVerseSegment>) {
         let mut character_budget = width - starting_offset;
         let mut accumulated_index = 0;
 
         let regions = self.calculate_verse_rows_from_wrapping(width, starting_offset);
+
+        // No verses in first segment.
+        if regions.first().expect("There should be a region here").1 == 0 {
+            return (None, Some(self));
+        }
+
         // Find point where we have to split.
         for (consumed, raw_index) in &regions {
             if *consumed <= character_budget {
@@ -365,11 +416,11 @@ impl ColumnVerseSegment {
         };
 
         (
-            ColumnVerseSegment {
+            Some(ColumnVerseSegment {
                 show_number: self.show_number,
                 number: self.number,
                 text: first,
-            },
+            }),
             remainder,
         )
     }
