@@ -4,16 +4,18 @@ use crate::config::VERSION;
 use crate::prelude::*;
 
 pub struct LogosFooter {
-    left_side: String,
-    right_side: String,
+    app_name: String,
+    version: String,
+    keymaps: String,
 }
 
 impl LogosFooter {
     pub fn new() -> Self {
         Self {
             // TODO: Check for these icons support before just rendering it.
-            left_side: format!("   logos [{}]", VERSION),
-            right_side: String::from("[q] quit "),
+            app_name: "   logos ".to_string(),
+            version: format!("[{}]", VERSION.to_string()),
+            keymaps: String::from("[q] quit "),
         }
     }
 }
@@ -24,25 +26,25 @@ impl Component for LogosFooter {
     }
 
     fn render(&mut self, area: Rect, buf: &mut Buffer) -> Result<()> {
-        let left = Line::from(self.left_side.as_str());
-        let right = Line::from(self.right_side.as_str()).right_aligned();
-
         let [left_area, right_area] = Layout::horizontal([
             Constraint::Fill(1),
-            Constraint::Length(self.right_side.len() as u16),
+            Constraint::Length(self.keymaps.len() as u16),
         ])
         .areas(area);
 
-        Paragraph::new(left)
-            .bg(Color::Black)
-            .bold()
-            .white()
-            .render(left_area, buf);
-        Paragraph::new(right)
+        Line::from(vec![
+            Span::styled(&self.app_name, Style::new().white().bold()),
+            Span::styled(&self.version, Style::new().dark_gray().bold()),
+        ])
+        .bg(Color::Black)
+        .render(left_area, buf);
+
+        Line::from(self.keymaps.as_str())
             .bg(Color::Black)
             .bold()
             .red()
             .render(right_area, buf);
+
         Ok(())
     }
 }
