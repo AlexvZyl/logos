@@ -9,7 +9,6 @@ use crate::{
 #[derive(Debug)]
 pub struct Column {
     pub width: usize,
-    pub height: usize,
     pub chapters: Vec<ColumnChapter>,
 }
 
@@ -55,11 +54,7 @@ impl Column {
             }
         }
 
-        let column = Column {
-            width,
-            height,
-            chapters,
-        };
+        let column = Column { width, chapters };
         (column, remainder)
     }
 
@@ -429,7 +424,7 @@ impl ColumnVerseSegment {
     /// (verse number, verse text)
     ///
     /// TODO: TOO MANY CLONES!
-    pub fn build(&self) -> (Option<Span>, Span) {
+    pub fn build(&self) -> (Option<Span<'_>>, Span<'_>) {
         assert!(!self.text.is_empty());
 
         let number = if self.show_number {
