@@ -145,6 +145,12 @@ impl AppStateTrait for DefaultReader {
                     _ => self.focused,
                 })?;
             }
+            // Turn the reader's pages while browsing books.
+            AppEvent::UserAction(action @ (UserAction::NextPage | UserAction::PrevPage))
+                if self.focused == FocusedWindow::Books =>
+            {
+                self.book_reader.page(*action);
+            }
             _ => {
                 self.books_view.update(&event)?;
                 self.book_reader.update(&event)?;

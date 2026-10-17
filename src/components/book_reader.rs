@@ -72,6 +72,20 @@ impl BookReader {
         }
     }
 
+    /// Handles `NextPage`, `PrevPage`, `HalfPageDown` and `HalfPageUp`, ignores anything else.
+    /// Public so that paging works while another window is focused.
+    pub fn page(&mut self, action: UserAction) {
+        let stride = self.page_height + PAGE_GAP;
+        let half = self.page_height / 2;
+        self.scrolled_offset = match action {
+            UserAction::NextPage => (self.scrolled_offset / stride + 1) * stride,
+            UserAction::PrevPage => self.scrolled_offset.saturating_sub(1) / stride * stride,
+            UserAction::HalfPageDown => self.scrolled_offset.saturating_add(half),
+            UserAction::HalfPageUp => self.scrolled_offset.saturating_sub(half),
+            _ => self.scrolled_offset,
+        };
+    }
+
     pub fn set_num_columns(&mut self, num_columns: usize) {
         self.num_columns = num_columns.clamp(1, MAX_COLUMNS);
     }
@@ -111,20 +125,10 @@ impl Component for BookReader {
                 UserAction::MoveUp => {
                     self.scrolled_offset = self.scrolled_offset.saturating_sub(1);
                 }
-                UserAction::HalfPageDown => {
-                    self.scrolled_offset = self.scrolled_offset.saturating_add(self.page_height / 2);
-                }
-                UserAction::HalfPageUp => {
-                    self.scrolled_offset = self.scrolled_offset.saturating_sub(self.page_height / 2);
-                }
-                UserAction::NextPage => {
-                    let stride = self.page_height + PAGE_GAP;
-                    self.scrolled_offset = (self.scrolled_offset / stride + 1) * stride;
-                }
-                UserAction::PrevPage => {
-                    let stride = self.page_height + PAGE_GAP;
-                    self.scrolled_offset = self.scrolled_offset.saturating_sub(1) / stride * stride;
-                }
+                UserAction::NextPage
+                | UserAction::PrevPage
+                | UserAction::HalfPageDown
+                | UserAction::HalfPageUp => self.page(*action),
                 UserAction::IncrementColumns => self.set_num_columns(self.num_columns + 1),
                 UserAction::DecrementColumns => self.set_num_columns(self.num_columns.saturating_sub(1)),
                 _ => {}
