@@ -47,7 +47,7 @@ impl BookLayout {
                     chapter: chapter.number,
                     verse: verse.number,
                 });
-                let text = verse.collect_string(bible.get_raw_data());
+                let text = bible.text(&verse.text);
                 let mut words = text.split_whitespace();
                 let number = Span::styled(verse.number.to_string(), theme::VERSE_NUMBER);
 

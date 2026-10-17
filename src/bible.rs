@@ -3,28 +3,39 @@ use crate::{
     filesystem::{decompress_xz, is_xml_file, is_xz_compressed_xml},
     prelude::*,
 };
-use indexmap::IndexMap;
 use quick_xml::Reader;
 use quick_xml::events::{BytesStart, Event};
 use std::time::Instant;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
+/// Owns the raw file.  Everything else is a `RawSpan` into it.
 #[derive(Debug)]
 pub struct Bible {
     translation: String,
     disk_file: PathBuf,
 
     metadata: Metadata,
-    index: IndexMap<String, Book>,
-    books: Vec<String>,
+    /// In file order.
+    books: Vec<Book>,
     raw: String,
 }
 
-impl Bible {
-    pub fn get_book(&self, book_name: &str) -> Book {
-        // TODO: Don't like the clone and unwrap.
-        self.index.get(book_name).unwrap().clone()
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/// A byte range into `Bible::raw`.  Empty means not present in the file.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct RawSpan {
+    start: u32,
+    end: u32,
+}
+
+impl RawSpan {
+    fn new(start: usize, end: usize) -> Self {
+        Self {
+            start: start as u32,
+            end: end as u32,
+        }
     }
 }
 
@@ -34,16 +45,16 @@ impl Bible {
 #[derive(Debug, Default)]
 #[allow(dead_code)]
 pub struct Metadata {
-    pub work: String,
-    pub title: String,
-    pub description: String,
-    pub identifier: String,
+    pub work: RawSpan,
+    pub title: RawSpan,
+    pub description: RawSpan,
+    pub identifier: RawSpan,
     /// `xml:lang` of the text.
-    pub language: String,
+    pub language: RawSpan,
+    pub ref_system: RawSpan,
     pub languages: Vec<Typed>,
     pub publishers: Vec<Typed>,
     pub rights: Vec<Typed>,
-    pub ref_system: String,
     pub revisions: Vec<Revision>,
 }
 
@@ -51,29 +62,27 @@ pub struct Metadata {
 #[derive(Debug, Default)]
 #[allow(dead_code)]
 pub struct Typed {
-    pub kind: String,
-    pub text: String,
+    pub kind: RawSpan,
+    pub text: RawSpan,
 }
 
 #[derive(Debug, Default)]
 #[allow(dead_code)]
 pub struct Revision {
-    pub date: String,
-    pub description: String,
+    pub date: RawSpan,
+    pub description: RawSpan,
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Default)]
 pub struct Book {
+    /// Short name, e.g. `Genesis`.
+    pub name: RawSpan,
     pub chapters: Vec<Chapter>,
 }
 
 impl Book {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
     pub fn get_chapters(&self) -> impl Iterator<Item = &Chapter> {
         self.chapters.iter()
     }
@@ -81,10 +90,10 @@ impl Book {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Chapter {
     pub number: usize,
-    pub verses: Vec<VerseView>,
+    pub verses: Vec<Verse>,
 }
 
 impl Chapter {
@@ -95,38 +104,26 @@ impl Chapter {
         }
     }
 
-    pub fn get_verses(&self) -> impl Iterator<Item = &VerseView> {
+    pub fn get_verses(&self) -> impl Iterator<Item = &Verse> {
         self.verses.iter()
     }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-/// A non-owning view into the raw memory.
-#[derive(Debug, Clone)]
-pub struct VerseView {
+#[derive(Debug)]
+pub struct Verse {
     pub number: usize,
-    /// (start, end) byte ranges of text regions in the raw data.
-    pub indices: Vec<(usize, usize)>,
+    /// Inline markup splits the text into multiple spans.
+    pub text: Vec<RawSpan>,
 }
 
-impl VerseView {
+impl Verse {
     pub fn new(number: usize) -> Self {
         Self {
             number,
-            indices: Vec::new(),
+            text: Vec::new(),
         }
-    }
-
-    // TODO: Don't really like that you have to pass in the raw.
-    // Collect all of these types (Bible, chapter, verse) into a single
-    // struct with references.
-    pub fn collect_string(&self, raw: &str) -> String {
-        // There seems to be some groups of whitespaces in the data.  I guess the file is just
-        // dirty.
-        // TODO: Investigate and move this logic out.
-        let s: String = self.indices.iter().map(move |&(s, e)| &raw[s..e]).collect();
-        s.split_whitespace().collect::<Vec<_>>().join(" ")
     }
 }
 
@@ -153,163 +150,107 @@ impl Bible {
         };
         info!("Loaded {:?} in {:?}", path, start.elapsed());
 
+        if raw.len() > u32::MAX as usize {
+            return Err(Error::InvalidBibleFile);
+        }
         let metadata = Self::parse_metadata(&raw)?;
-        let index = Self::build_index_from_osis(&raw)?;
+        let books = Self::build_index_from_osis(&raw)?;
         return Ok(Bible {
             disk_file: path.to_path_buf(),
             metadata,
-            books: index.keys().cloned().collect(),
-            index: index,
+            books,
             translation: "KJV".to_string(), // TODO: Get translation.
             raw: raw,
         });
     }
 
-    pub fn get_books(&self) -> &Vec<String> {
-        &self.books
+    // Accessors.
+
+    /// The exact bytes from the file.
+    pub fn raw(&self, span: RawSpan) -> &str {
+        &self.raw[span.start as usize..span.end as usize]
     }
 
+    /// Display text: entities unescaped and whitespace collapsed.
+    pub fn text(&self, spans: &[RawSpan]) -> String {
+        // There seems to be some groups of whitespaces in the data.  I guess the file is just
+        // dirty.
+        let s: String = spans.iter().map(|&s| self.raw(s)).collect();
+        let s = quick_xml::escape::unescape(&s).unwrap_or(s.as_str().into());
+        s.split_whitespace().collect::<Vec<_>>().join(" ")
+    }
+
+    #[allow(dead_code)]
     pub fn get_metadata(&self) -> &Metadata {
         &self.metadata
     }
 
-    pub fn get_raw_data(&self) -> &str {
-        &self.raw
+    pub fn book_names(&self) -> Vec<String> {
+        self.books.iter().map(|b| self.raw(b.name).to_string()).collect()
     }
 
-    pub fn get_book_index(&self, name: &str) -> Result<&Book> {
-        self.index
-            .get(name)
+    pub fn get_book(&self, name: &str) -> Result<&Book> {
+        self.books
+            .iter()
+            .find(|b| self.raw(b.name) == name)
             .ok_or(Error::BookNotFound(name.to_string()))
     }
 
-    fn build_index_from_osis(raw: &str) -> Result<IndexMap<String, Book>> {
-        info!("Building bible index");
-
-        let start = Instant::now();
-        let mut index: IndexMap<String, Book> = IndexMap::new();
-        let mut reader = Reader::from_str(raw);
-
-        let mut buf = Vec::new();
-        let mut book = String::new();
-        let mut awaiting_title = false;
-        let mut in_verse = false;
-        let mut current_chapter = 1;
-        let mut current_verse = 1;
-
-        loop {
-            match reader.read_event_into(&mut buf) {
-                Ok(Event::Start(ref e))
-                    if e.name().as_ref() == b"div" && Self::has_attr_val(e, b"type", b"book") =>
-                {
-                    awaiting_title = true;
-                }
-                Ok(Event::Start(ref e)) if e.name().as_ref() == b"title" && awaiting_title => {
-                    if let Some(name) = Self::attr(e, b"short") {
-                        book = name;
-                        index.entry(book.clone()).or_default();
-                    }
-                    awaiting_title = false;
-                    current_chapter = 1;
-                }
-                Ok(Event::Empty(ref e))
-                    if e.name().as_ref() == b"chapter" && Self::has_attr(e, b"sID") =>
-                {
-                    index
-                        .entry(book.clone())
-                        .or_default()
-                        .chapters
-                        .push(Chapter::new(current_chapter));
-                    current_chapter += 1;
-                    current_verse = 1;
-                }
-                Ok(Event::Empty(ref e))
-                    if e.name().as_ref() == b"verse" && Self::has_attr(e, b"sID") =>
-                {
-                    in_verse = true;
-                    if let Some(ch) = index.get_mut(&book).and_then(|b| b.chapters.last_mut()) {
-                        ch.verses.push(VerseView::new(current_verse));
-                        current_verse += 1;
-                    }
-                }
-                Ok(Event::Empty(ref e))
-                    if e.name().as_ref() == b"verse" && Self::has_attr(e, b"eID") =>
-                {
-                    in_verse = false;
-                }
-                Ok(Event::Text(ref e)) if in_verse => {
-                    let len = e.len();
-                    if len > 0 {
-                        let end = reader.buffer_position() as usize;
-                        let start = end - len;
-                        if let Some(verse) = index
-                            .get_mut(&book)
-                            .and_then(|b| b.chapters.last_mut())
-                            .and_then(|c| c.verses.last_mut())
-                        {
-                            verse.indices.push((start, end));
-                        }
-                    }
-                }
-                Ok(Event::Eof) => break,
-                Err(e) => return Err(Error::BibleIndex(e.to_string())),
-                _ => {}
-            }
-            buf.clear();
-        }
-
-        info!("Built index in {:?}", start.elapsed());
-        Ok(index)
-    }
+    // Parsing.
 
     /// Parses the work level metadata from the OSIS header.
     fn parse_metadata(raw: &str) -> Result<Metadata> {
         let mut metadata = Metadata::default();
         let mut reader = Reader::from_str(raw);
 
-        let mut buf = Vec::new();
         let mut in_header = false;
         let mut in_work = false;
-        // Element (and its `type` attribute) whose text is being collected.
-        let mut capture: Option<(Vec<u8>, String, String)> = None;
+        let mut works = 0;
+        // Element, its `type` attribute and the start of its content.
+        let mut capture: Option<(&[u8], RawSpan, usize)> = None;
 
         loop {
-            match reader.read_event_into(&mut buf) {
-                Ok(Event::Text(ref e)) if capture.is_some() => {
-                    if let Some((_, _, text)) = &mut capture {
-                        text.push_str(&String::from_utf8_lossy(e));
-                    }
+            // Start of the markup of the event about to be read.
+            let before = reader.buffer_position() as usize;
+            let event = reader
+                .read_event()
+                .map_err(|e| Error::BibleIndex(e.to_string()))?;
+            let after = reader.buffer_position() as usize;
+
+            match event {
+                Event::Start(ref e) if e.name().as_ref() == b"osisText" => {
+                    metadata.language = Self::attr_span(raw, e, b"xml:lang").unwrap_or_default();
                 }
-                Ok(Event::End(ref e))
-                    if capture.as_ref().is_some_and(|(el, _, _)| el == e.name().as_ref()) =>
-                {
-                    let (element, kind, text) = capture.take().expect("Checked above");
-                    let text = text.split_whitespace().collect::<Vec<_>>().join(" ");
-                    Self::set_header_field(&mut metadata, in_work, &element, kind, text);
-                }
-                Ok(Event::Start(ref e)) if e.name().as_ref() == b"osisText" => {
-                    metadata.language = Self::attr(e, b"xml:lang").unwrap_or_default();
-                }
-                Ok(Event::Start(ref e)) if e.name().as_ref() == b"header" => in_header = true,
+                Event::Start(ref e) if e.name().as_ref() == b"header" => in_header = true,
                 // Everything we need is in the header.
-                Ok(Event::End(ref e)) if e.name().as_ref() == b"header" => break,
-                Ok(Event::End(ref e)) if e.name().as_ref() == b"work" => in_work = false,
-                Ok(Event::Start(ref e)) if in_header => match e.name().as_ref() {
-                    b"work" if metadata.work.is_empty() => {
-                        in_work = true;
-                        metadata.work = Self::attr(e, b"osisWork").unwrap_or_default();
+                Event::End(ref e) if e.name().as_ref() == b"header" => break,
+                Event::Start(ref e) if in_header && e.name().as_ref() == b"work" => {
+                    // Only the first work describes this text.
+                    works += 1;
+                    in_work = works == 1;
+                    if in_work {
+                        metadata.work = Self::attr_span(raw, e, b"osisWork").unwrap_or_default();
                     }
-                    b"revisionDesc" => metadata.revisions.push(Revision::default()),
-                    name => {
-                        let kind = Self::attr(e, b"type").unwrap_or_default();
-                        capture = Some((name.to_vec(), kind, String::new()));
-                    }
-                },
-                Ok(Event::Eof) => break,
-                Err(e) => return Err(Error::BibleIndex(e.to_string())),
+                }
+                Event::End(ref e) if e.name().as_ref() == b"work" => in_work = false,
+                Event::Start(ref e) if in_header && e.name().as_ref() == b"revisionDesc" => {
+                    metadata.revisions.push(Revision::default())
+                }
+                Event::Start(ref e) if in_header && capture.is_none() => {
+                    let kind = Self::attr_span(raw, e, b"type").unwrap_or_default();
+                    let name = &raw.as_bytes()[before + 1..before + 1 + e.name().as_ref().len()];
+                    capture = Some((name, kind, after));
+                }
+                Event::End(ref e)
+                    if capture.is_some_and(|(name, _, _)| name == e.name().as_ref()) =>
+                {
+                    let (name, kind, start) = capture.take().expect("Checked above");
+                    let text = RawSpan::new(start, before);
+                    Self::set_header_field(&mut metadata, in_work, name, kind, text);
+                }
+                Event::Eof => break,
                 _ => {}
             }
-            buf.clear();
         }
 
         Ok(metadata)
@@ -319,8 +260,8 @@ impl Bible {
         metadata: &mut Metadata,
         in_work: bool,
         element: &[u8],
-        kind: String,
-        text: String,
+        kind: RawSpan,
+        text: RawSpan,
     ) {
         match element {
             b"date" => {
@@ -345,13 +286,94 @@ impl Bible {
         }
     }
 
+    fn build_index_from_osis(raw: &str) -> Result<Vec<Book>> {
+        info!("Building bible index");
+
+        let start = Instant::now();
+        let mut books: Vec<Book> = Vec::new();
+        let mut reader = Reader::from_str(raw);
+
+        let mut awaiting_title = false;
+        let mut in_verse = false;
+        let mut current_chapter = 1;
+        let mut current_verse = 1;
+
+        loop {
+            let before = reader.buffer_position() as usize;
+            let event = reader
+                .read_event()
+                .map_err(|e| Error::BibleIndex(e.to_string()))?;
+            let after = reader.buffer_position() as usize;
+
+            match event {
+                Event::Start(ref e)
+                    if e.name().as_ref() == b"div" && Self::has_attr_val(e, b"type", b"book") =>
+                {
+                    awaiting_title = true;
+                }
+                Event::Start(ref e) if e.name().as_ref() == b"title" && awaiting_title => {
+                    if let Some(name) = Self::attr_span(raw, e, b"short") {
+                        books.push(Book {
+                            name,
+                            chapters: Vec::new(),
+                        });
+                    }
+                    awaiting_title = false;
+                    current_chapter = 1;
+                }
+                Event::Empty(ref e)
+                    if e.name().as_ref() == b"chapter" && Self::has_attr(e, b"sID") =>
+                {
+                    if let Some(book) = books.last_mut() {
+                        book.chapters.push(Chapter::new(current_chapter));
+                    }
+                    current_chapter += 1;
+                    current_verse = 1;
+                }
+                Event::Empty(ref e)
+                    if e.name().as_ref() == b"verse" && Self::has_attr(e, b"sID") =>
+                {
+                    in_verse = true;
+                    if let Some(ch) = books.last_mut().and_then(|b| b.chapters.last_mut()) {
+                        ch.verses.push(Verse::new(current_verse));
+                        current_verse += 1;
+                    }
+                }
+                Event::Empty(ref e)
+                    if e.name().as_ref() == b"verse" && Self::has_attr(e, b"eID") =>
+                {
+                    in_verse = false;
+                }
+                // Entities arrive as their own event, keep them escaped in the span.
+                Event::Text(_) | Event::GeneralRef(_) if in_verse && after > before => {
+                    if let Some(verse) = books
+                        .last_mut()
+                        .and_then(|b| b.chapters.last_mut())
+                        .and_then(|c| c.verses.last_mut())
+                    {
+                        verse.text.push(RawSpan::new(before, after));
+                    }
+                }
+                Event::Eof => break,
+                _ => {}
+            }
+        }
+
+        info!("Built index in {:?}", start.elapsed());
+        Ok(books)
+    }
+
     // Parsing utils.
 
-    fn attr(e: &BytesStart, key: &[u8]) -> Option<String> {
-        e.attributes()
+    /// Span of an attribute value.  Only valid for events borrowed from `raw`.
+    fn attr_span(raw: &str, e: &BytesStart, key: &[u8]) -> Option<RawSpan> {
+        let a = e
+            .attributes()
             .filter_map(|a| a.ok())
-            .find(|a| a.key.as_ref() == key)
-            .map(|a| String::from_utf8_lossy(&a.value).to_string())
+            .find(|a| a.key.as_ref() == key)?;
+        let start = (a.value.as_ptr() as usize).checked_sub(raw.as_ptr() as usize)?;
+        let end = start + a.value.len();
+        (end <= raw.len()).then(|| RawSpan::new(start, end))
     }
 
     fn has_attr(e: &BytesStart, key: &[u8]) -> bool {
@@ -367,3 +389,4 @@ impl Bible {
     }
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////
