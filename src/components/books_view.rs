@@ -37,6 +37,13 @@ impl BooksView {
         &self.books[self.selected_book_index]
     }
 
+    /// Does nothing if the book does not exist.
+    pub fn select(&mut self, book: &str) {
+        if let Some(i) = self.books.iter().position(|b| b == book) {
+            self.selected_book_index = i;
+        }
+    }
+
     pub fn focused(&self) -> bool {
         self.focused
     }

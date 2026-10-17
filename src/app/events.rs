@@ -63,6 +63,7 @@ impl KeyMap {
         let mut map = HashMap::new();
         let none = KeyModifiers::NONE;
         map.insert((KeyCode::Char('q'), none), UserAction::Quit);
+        map.insert((KeyCode::Char('c'), KeyModifiers::CONTROL), UserAction::Quit);
         map.insert((KeyCode::Char('r'), none), UserAction::OpenReader);
         map.insert((KeyCode::Char('j'), none), UserAction::MoveDown);
         map.insert((KeyCode::Char('k'), none), UserAction::MoveUp);

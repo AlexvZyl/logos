@@ -1,7 +1,9 @@
 use crate::app::data::PersistentAppData;
 use crate::app::events::{AppEvent, UserAction};
 use crate::app::state::{AppStateEnum, AppStateTrait};
+use crate::cache::{AppCache, ReaderCache};
 use crate::components::Component;
+use crate::components::book_column::Position;
 use crate::components::book_reader::BookReader;
 use crate::components::books_view::BooksView;
 use crate::components::footer::LogosFooter;
@@ -72,18 +74,44 @@ impl DefaultReader {
             FocusedWindow::Strongs => self.strongs.update(&AppEvent::Focus),
         }
     }
+
+    fn save_cache(&self) {
+        let position = self.book_reader.position();
+        let cache = AppCache {
+            reader: ReaderCache {
+                book: Some(self.book_reader.book_name().to_string()),
+                chapter: position.chapter,
+                verse: position.verse,
+                num_columns: self.book_reader.num_columns(),
+            },
+        };
+        if let Err(e) = cache.save() {
+            warn!("Failed to save cache: {e}");
+        }
+    }
 }
 
 impl AppStateTrait for DefaultReader {
     fn from_state(state: AppStateEnum) -> Result<AppStateEnum> {
         let app_data = state.get_app_data();
         let books = app_data.bible.get_books().clone();
-        // TODO: Save/load from cache.
-        let initial_book = &books[0];
+        let cache = AppCache::load().reader;
 
-        let book_reader = BookReader::new(app_data.bible.clone(), initial_book.to_string());
         let mut books_view = BooksView::new(books);
+        if let Some(book) = &cache.book {
+            books_view.select(book);
+        }
         books_view.update(&AppEvent::Focus)?;
+
+        let mut book_reader =
+            BookReader::new(app_data.bible.clone(), books_view.selected_book().to_string());
+        book_reader.set_num_columns(cache.num_columns);
+        if cache.book.as_deref() == Some(books_view.selected_book()) {
+            book_reader.set_position(Position {
+                chapter: cache.chapter,
+                verse: cache.verse,
+            });
+        }
 
         Ok(AppStateEnum::DefaultReader(DefaultReader {
             app_data,
@@ -98,7 +126,10 @@ impl AppStateTrait for DefaultReader {
 
     fn update(mut self, event: AppEvent) -> Result<AppStateEnum> {
         match &event {
-            AppEvent::UserAction(UserAction::Quit) => return Ok(AppStateEnum::Exit),
+            AppEvent::UserAction(UserAction::Quit) => {
+                self.save_cache();
+                return Ok(AppStateEnum::Exit);
+            }
             AppEvent::UserAction(UserAction::IncrementWindow) => {
                 self.focus(self.focused.next())?;
             }

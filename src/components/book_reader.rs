@@ -4,7 +4,7 @@ use ratatui::widgets::{Block, BorderType, Borders};
 use crate::app::events::{AppEvent, UserAction};
 use crate::bible::Bible;
 use crate::components::Component;
-use crate::components::book_column::{BookLayout, PAGE_GAP};
+use crate::components::book_column::{BookLayout, PAGE_GAP, Position};
 use crate::prelude::*;
 
 const MAX_COLUMNS: usize = 4;
@@ -20,6 +20,11 @@ pub struct BookReader {
     page_height: usize,
     // For lazy loading.
     book_layout: Option<BookLayout>,
+    /// Stable reading position, used to restore the offset when the layout changes.
+    position: Position,
+    /// `(width, height, num_columns)` from the last render.  `None` forces a restore.
+    last_params: Option<(usize, usize, usize)>,
+    last_offset: usize,
 }
 
 impl BookReader {
@@ -34,7 +39,28 @@ impl BookReader {
             // TODO: Change based on terminal size.
             num_columns: 2,
             page_height: 0,
+            position: Position::default(),
+            last_params: None,
+            last_offset: 0,
         }
+    }
+
+    pub fn book_name(&self) -> &str {
+        &self.current_book_name
+    }
+
+    pub fn position(&self) -> Position {
+        self.position
+    }
+
+    pub fn num_columns(&self) -> usize {
+        self.num_columns
+    }
+
+    /// Takes effect on the next render, once the layout is known.
+    pub fn set_position(&mut self, position: Position) {
+        self.position = position;
+        self.last_params = None;
     }
 
     pub fn set_book(&mut self, book: &str) {
@@ -42,6 +68,7 @@ impl BookReader {
             self.current_book_name = book.to_string();
             self.scrolled_offset = 0;
             self.book_changed = true;
+            self.set_position(Position::default());
         }
     }
 
@@ -130,7 +157,19 @@ impl Component for BookReader {
         let height = padded.height as usize;
         self.page_height = height;
         let n = columns.len();
+
+        let params = Some((width, height, n));
+        if self.last_params != params {
+            self.scrolled_offset = layout.offset_of(self.position, n, height);
+            self.last_offset = self.scrolled_offset;
+            self.last_params = params;
+        }
         self.scrolled_offset = self.scrolled_offset.min(layout.max_offset(n, height));
+        // Only update the position on scroll, so that restoring does not drift it.
+        if self.scrolled_offset != self.last_offset {
+            self.position = layout.position_at(self.scrolled_offset, n, height);
+            self.last_offset = self.scrolled_offset;
+        }
 
         for (i, column) in columns.iter().enumerate() {
             let rows = layout.column(i, n, self.scrolled_offset, height);

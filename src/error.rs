@@ -16,11 +16,17 @@ pub enum Error {
     VerseNotFound(String, usize, usize),
     #[error("Translation not supported")]
     UnsupprtedTranslation(String),
+    #[error("Could not resolve cache directory")]
+    NoCacheDir,
 
     #[error(transparent)]
     IoError(#[from] std::io::Error),
     #[error(transparent)]
     ParseError(#[from] FromUtf8Error),
+    #[error(transparent)]
+    TomlDeError(#[from] toml::de::Error),
+    #[error(transparent)]
+    TomlSerError(#[from] toml::ser::Error),
 
     #[error(transparent)]
     Eyre(#[from] eyre::Report),

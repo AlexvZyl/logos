@@ -1,5 +1,6 @@
 mod app;
 mod bible;
+mod cache;
 mod components;
 mod config;
 mod error;
