@@ -23,6 +23,12 @@ pub enum UserAction {
     /// `usize`: The index of the window.
     JumpToWindow(usize),
     OpenReader,
+    IncrementColumns,
+    DecrementColumns,
+    HalfPageDown,
+    HalfPageUp,
+    NextPage,
+    PrevPage,
 }
 
 /// Mappings of keys -> actions.
@@ -38,6 +44,13 @@ impl KeyMap {
         map.insert((KeyCode::Char('r'), none), UserAction::OpenReader);
         map.insert((KeyCode::Char('j'), none), UserAction::MoveDown);
         map.insert((KeyCode::Char('k'), none), UserAction::MoveUp);
+        map.insert((KeyCode::Char('+'), none), UserAction::IncrementColumns);
+        map.insert((KeyCode::Char('+'), KeyModifiers::SHIFT), UserAction::IncrementColumns);
+        map.insert((KeyCode::Char('-'), none), UserAction::DecrementColumns);
+        map.insert((KeyCode::Char('d'), KeyModifiers::CONTROL), UserAction::HalfPageDown);
+        map.insert((KeyCode::Char('u'), KeyModifiers::CONTROL), UserAction::HalfPageUp);
+        map.insert((KeyCode::Char('n'), none), UserAction::NextPage);
+        map.insert((KeyCode::Char('p'), none), UserAction::PrevPage);
         map.insert((KeyCode::Tab, none), UserAction::IncrementWindow);
         map.insert(
             (KeyCode::BackTab, KeyModifiers::SHIFT),

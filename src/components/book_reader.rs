@@ -4,8 +4,10 @@ use ratatui::widgets::{Block, BorderType, Borders};
 use crate::app::events::{AppEvent, UserAction};
 use crate::bible::Bible;
 use crate::components::Component;
-use crate::components::book_column::Column;
+use crate::components::book_column::{BookLayout, PAGE_GAP};
 use crate::prelude::*;
+
+const MAX_COLUMNS: usize = 4;
 
 pub struct BookReader {
     bible: Arc<Bible>,
@@ -14,8 +16,10 @@ pub struct BookReader {
     focused: bool,
     book_changed: bool,
     num_columns: usize,
+    /// Column height from the last render.
+    page_height: usize,
     // For lazy loading.
-    column: Option<Column>,
+    book_layout: Option<BookLayout>,
 }
 
 impl BookReader {
@@ -26,9 +30,10 @@ impl BookReader {
             scrolled_offset: 0,
             focused: false,
             book_changed: true,
-            column: None,
+            book_layout: None,
             // TODO: Change based on terminal size.
             num_columns: 2,
+            page_height: 0,
         }
     }
 
@@ -38,6 +43,10 @@ impl BookReader {
             self.scrolled_offset = 0;
             self.book_changed = true;
         }
+    }
+
+    pub fn set_num_columns(&mut self, num_columns: usize) {
+        self.num_columns = num_columns.clamp(1, MAX_COLUMNS);
     }
 
     /// TODO: Simulate scrollling.
@@ -52,19 +61,14 @@ impl BookReader {
             .split(area)[1]
     }
 
-    /// TODO: This function will have to be very smart.  Handle the different columns etc...
-    /// For now, just build one so that we can debug.
-    fn build_columns(&self, width: usize, height: usize) -> Result<Column> {
-        let (first, _second) = Column::new(
-            width,
-            height,
-            self.bible.as_ref(),
-            &self.bible.get_book(&self.current_book_name).chapters[0],
-            None,
-        );
-
-        // debug!("{:?}", second);
-        Ok(first)
+    fn columns(area: Rect, num_columns: usize) -> Vec<Rect> {
+        const GAP: u16 = 2;
+        let n = num_columns.max(1) as u16;
+        let width = area.width.saturating_sub(GAP * (n - 1)) / n;
+        Layout::horizontal(vec![Constraint::Length(width); n as usize])
+            .spacing(GAP)
+            .split(area)
+            .to_vec()
     }
 }
 
@@ -80,6 +84,22 @@ impl Component for BookReader {
                 UserAction::MoveUp => {
                     self.scrolled_offset = self.scrolled_offset.saturating_sub(1);
                 }
+                UserAction::HalfPageDown => {
+                    self.scrolled_offset = self.scrolled_offset.saturating_add(self.page_height / 2);
+                }
+                UserAction::HalfPageUp => {
+                    self.scrolled_offset = self.scrolled_offset.saturating_sub(self.page_height / 2);
+                }
+                UserAction::NextPage => {
+                    let stride = self.page_height + PAGE_GAP;
+                    self.scrolled_offset = (self.scrolled_offset / stride + 1) * stride;
+                }
+                UserAction::PrevPage => {
+                    let stride = self.page_height + PAGE_GAP;
+                    self.scrolled_offset = self.scrolled_offset.saturating_sub(1) / stride * stride;
+                }
+                UserAction::IncrementColumns => self.set_num_columns(self.num_columns + 1),
+                UserAction::DecrementColumns => self.set_num_columns(self.num_columns.saturating_sub(1)),
                 _ => {}
             },
             _ => {}
@@ -102,14 +122,24 @@ impl Component for BookReader {
         let padded = Self::layout(block.inner(area), self.scrolled_offset, self.num_columns);
         block.render(area, buf);
 
-        if self.column.is_none() || self.book_changed {
-            self.column = Some(self.build_columns(padded.width as usize, padded.height as usize)?);
+        let columns = Self::columns(padded, self.num_columns);
+        let width = columns[0].width as usize;
+        if self.book_changed || self.book_layout.as_ref().is_none_or(|l| l.width != width) {
+            let book = self.bible.get_book(&self.current_book_name);
+            self.book_layout = Some(BookLayout::new(&self.bible, &book, width));
             self.book_changed = false;
         }
-        self.column
-            .as_mut()
-            .expect("Just created the column")
-            .render(padded, buf)?;
+        let layout = self.book_layout.as_ref().expect("Just created the layout");
+
+        let height = padded.height as usize;
+        self.page_height = height;
+        let n = columns.len();
+        self.scrolled_offset = self.scrolled_offset.min(layout.max_offset(n, height));
+
+        for (i, column) in columns.iter().enumerate() {
+            let rows = layout.column(i, n, self.scrolled_offset, height);
+            Paragraph::new(rows).render(*column, buf);
+        }
 
         Ok(())
     }

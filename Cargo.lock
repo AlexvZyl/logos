@@ -905,6 +905,7 @@ dependencies = [
  "ratatui",
  "thiserror 2.0.18",
  "tui-big-text",
+ "unicode-width",
  "xz2",
 ]
 
