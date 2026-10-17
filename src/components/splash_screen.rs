@@ -22,7 +22,7 @@ impl Component for SplashScreen {
             .lines(vec![Line::styled("LOGOS", theme::LOGO)])
             .build();
 
-        let version = Paragraph::new(format!("v{VERSION}"))
+        let version = Paragraph::new(VERSION)
             .alignment(Alignment::Center)
             .style(theme::MUTED.italic());
 

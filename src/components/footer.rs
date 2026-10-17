@@ -14,7 +14,7 @@ impl LogosFooter {
         Self {
             // TODO: Check for these icons support before just rendering it.
             app_name: "   logos ".to_string(),
-            version: format!("[{}]", VERSION.to_string()),
+            version: format!("[{VERSION}]"),
             keymaps: String::from("[q] quit "),
         }
     }

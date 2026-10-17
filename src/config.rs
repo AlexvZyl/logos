@@ -11,7 +11,7 @@ pub fn get_translations() -> &'static Translations {
         .get_or_init(|| HashMap::from([("KJV", PathBuf::from("assets/eng-kjv.osis.xml.xz"))]))
 }
 
-pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+pub const VERSION: &str = env!("GIT_HASH");
 
 // TODO: Get from screen rate or config file.
 pub const TARGET_FRAMERATE: f64 = 120.0;
