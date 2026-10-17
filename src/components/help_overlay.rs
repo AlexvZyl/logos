@@ -4,6 +4,11 @@ use crate::prelude::*;
 use ratatui::widgets::{Block, BorderType, Borders, Clear, Padding};
 use unicode_width::UnicodeWidthStr;
 
+// `(left, right, top, bottom)`.
+const PADDING: Padding = Padding::new(4, 4, 1, 1);
+const COLUMN_GAP: &str = "   ";
+const BORDERS: u16 = 2;
+
 pub struct HelpOverlay {
     entries: Vec<(String, &'static str)>,
 }
@@ -25,10 +30,10 @@ impl Component for HelpOverlay {
         let key_width = self.entries.iter().map(|(k, _)| k.width()).max().unwrap_or(0);
         let desc_width = self.entries.iter().map(|(_, d)| d.width()).max().unwrap_or(0);
 
-        // Borders (2) + padding (4) + gap between columns (3).
-        let width = ((key_width + desc_width + 9) as u16).min(area.width);
-        // Borders (2) + padding (2).
-        let height = ((self.entries.len() + 4) as u16).min(area.height);
+        let content_width = (key_width + COLUMN_GAP.len() + desc_width) as u16;
+        let width = (content_width + PADDING.left + PADDING.right + BORDERS).min(area.width);
+        let height =
+            (self.entries.len() as u16 + PADDING.top + PADDING.bottom + BORDERS).min(area.height);
         let popup = Rect {
             x: area.x + (area.width - width) / 2,
             y: area.y + (area.height - height) / 2,
@@ -42,7 +47,7 @@ impl Component for HelpOverlay {
             .map(|(keys, description)| {
                 Line::from(vec![
                     Span::styled(format!("{keys:<key_width$}"), theme::KEY_HINT),
-                    Span::raw("   "),
+                    Span::raw(COLUMN_GAP),
                     Span::raw(*description),
                 ])
             })
@@ -52,7 +57,7 @@ impl Component for HelpOverlay {
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
             .border_style(theme::BORDER_FOCUSED)
-            .padding(Padding::new(2, 2, 1, 1))
+            .padding(PADDING)
             .title(Span::styled(" Keybinds ", theme::TITLE));
 
         Clear.render(popup, buf);
