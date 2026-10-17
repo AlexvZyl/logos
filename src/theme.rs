@@ -17,6 +17,7 @@ pub const LOGO: Style = Style::new().fg(Color::Yellow);
 pub const FOOTER: Style = Style::new().bg(Color::Black);
 pub const FOOTER_APP_NAME: Style = Style::new().fg(Color::White).add_modifier(Modifier::BOLD);
 pub const FOOTER_VERSION: Style = Style::new().fg(Color::DarkGray).add_modifier(Modifier::BOLD);
+pub const FOOTER_HELP: Style = Style::new().fg(Color::Blue).add_modifier(Modifier::BOLD);
 pub const FOOTER_KEYMAPS: Style = Style::new().fg(Color::Red).add_modifier(Modifier::BOLD);
 
 pub fn border(focused: bool) -> Style {

@@ -6,6 +6,7 @@ use crate::prelude::*;
 pub struct LogosFooter {
     app_name: String,
     version: String,
+    help: String,
     keymaps: String,
 }
 
@@ -15,7 +16,8 @@ impl LogosFooter {
             // TODO: Check for these icons support before just rendering it.
             app_name: "   logos ".to_string(),
             version: format!("[{VERSION}]"),
-            keymaps: String::from("[q] quit "),
+            help: String::from("?:help  "),
+            keymaps: String::from("q:quit "),
         }
     }
 }
@@ -26,8 +28,9 @@ impl Component for LogosFooter {
     }
 
     fn render(&mut self, area: Rect, buf: &mut Buffer) -> Result<()> {
-        let [left_area, right_area] = Layout::horizontal([
+        let [left_area, help_area, right_area] = Layout::horizontal([
             Constraint::Fill(1),
+            Constraint::Length(self.help.len() as u16),
             Constraint::Length(self.keymaps.len() as u16),
         ])
         .areas(area);
@@ -38,6 +41,10 @@ impl Component for LogosFooter {
         ])
         .style(theme::FOOTER)
         .render(left_area, buf);
+
+        Line::from(self.help.as_str())
+            .style(theme::FOOTER.patch(theme::FOOTER_HELP))
+            .render(help_area, buf);
 
         Line::from(self.keymaps.as_str())
             .style(theme::FOOTER.patch(theme::FOOTER_KEYMAPS))

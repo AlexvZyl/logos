@@ -62,7 +62,7 @@ impl Component for HelpOverlay {
             .border_type(BorderType::Rounded)
             .border_style(theme::BORDER_FOCUSED)
             .padding(PADDING)
-            .title(Span::styled(" Keybinds ", theme::TITLE));
+            .title(Span::styled(" Help ", theme::TITLE));
 
         Clear.render(popup, buf);
         Paragraph::new(lines).block(block).render(popup, buf);
