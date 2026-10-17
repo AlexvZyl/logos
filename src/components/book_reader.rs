@@ -143,7 +143,6 @@ impl Component for BookReader {
             .border_style(theme::border(self.focused));
 
         let padded = Self::layout(block.inner(area), self.scrolled_offset, self.num_columns);
-        block.render(area, buf);
 
         let columns = Self::columns(padded, self.num_columns);
         let width = columns[0].width as usize;
@@ -170,6 +169,13 @@ impl Component for BookReader {
             self.position = layout.position_at(self.scrolled_offset, n, height);
             self.last_offset = self.scrolled_offset;
         }
+
+        let screens = layout.screen_count(n, height).max(1);
+        let screen = layout.screen_at(self.scrolled_offset, height) + 1;
+        let page = format!(" [{}/{}] ", screen.min(screens), screens);
+        block
+            .title_top(Line::styled(page, theme::MUTED).right_aligned())
+            .render(area, buf);
 
         for (i, column) in columns.iter().enumerate() {
             let rows = layout.column(i, n, self.scrolled_offset, height);

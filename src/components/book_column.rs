@@ -121,11 +121,21 @@ impl BookLayout {
 
     /// Offset at which the last row of pages is aligned to the top.
     pub fn max_offset(&self, num_columns: usize, height: usize) -> usize {
+        self.screen_count(num_columns, height).saturating_sub(1) * (height + PAGE_GAP)
+    }
+
+    /// Number of page rows, i.e. screens of `num_columns` pages.
+    pub fn screen_count(&self, num_columns: usize, height: usize) -> usize {
         if height == 0 {
             return 0;
         }
         let pages = self.rows.len().div_ceil(height);
-        pages.div_ceil(num_columns.max(1)).saturating_sub(1) * (height + PAGE_GAP)
+        pages.div_ceil(num_columns.max(1))
+    }
+
+    /// Index of the page row at the top of the view.
+    pub fn screen_at(&self, offset: usize, height: usize) -> usize {
+        offset / (height + PAGE_GAP)
     }
 }
 
