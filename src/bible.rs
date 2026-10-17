@@ -43,20 +43,29 @@ impl RawSpan {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-/// Work level metadata from the OSIS header.
+/// Work level metadata from the OSIS header.  Examples are from the KJV.
 #[derive(Debug, Default)]
 #[allow(dead_code)]
 pub struct Metadata {
+    /// OSIS name of the work, e.g. `Bible.en.kjv`.
     pub work: RawSpan,
+    /// Name of the translation, e.g. `King James Version`.
     pub title: RawSpan,
+    /// A sentence or two about the translation.
     pub description: RawSpan,
+    /// Short id from the distributor, e.g. `eng-kjv` from eBible.org.
     pub identifier: RawSpan,
-    /// `xml:lang` of the text.
+    /// `xml:lang` of the text, e.g. `en`.
     pub language: RawSpan,
+    /// Versification the references follow, e.g. `Bible`.
     pub ref_system: RawSpan,
+    /// The language described in different ways, e.g. `x-ethnologue` is `eng`.
     pub languages: Vec<Typed>,
+    /// Print and electronic publishers, e.g. `x-electronic` is `eBible.org`.
     pub publishers: Vec<Typed>,
+    /// Copyright and license, e.g. `x-copyright` is `public domain`.
     pub rights: Vec<Typed>,
+    /// Changes made to the file, in file order.
     pub revisions: Vec<Revision>,
 }
 
@@ -64,14 +73,18 @@ pub struct Metadata {
 #[derive(Debug, Default)]
 #[allow(dead_code)]
 pub struct Typed {
+    /// The `type` attribute, e.g. `x-copyright`.
     pub kind: RawSpan,
     pub text: RawSpan,
 }
 
+/// An entry in the file's change log.
 #[derive(Debug, Default)]
 #[allow(dead_code)]
 pub struct Revision {
+    /// Free form, e.g. `2013.07.08`.
     pub date: RawSpan,
+    /// What changed, e.g. `created or updated OSIS file contents`.
     pub description: RawSpan,
 }
 
