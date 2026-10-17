@@ -94,7 +94,7 @@ impl DefaultReader {
 impl AppStateTrait for DefaultReader {
     fn from_state(state: AppStateEnum) -> Result<AppStateEnum> {
         let app_data = state.get_app_data();
-        let books = app_data.bible.book_names();
+        let books = app_data.bible.book_groups();
         let cache = AppCache::load().reader;
 
         let mut books_view = BooksView::new(books);

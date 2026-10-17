@@ -313,8 +313,18 @@ impl Bible {
         &self.metadata
     }
 
-    pub fn book_names(&self) -> Vec<String> {
-        self.books.iter().map(|b| self.raw(b.name).to_string()).collect()
+    /// Book names under their group title, e.g. `Old Testament`, in file order.
+    pub fn book_groups(&self) -> Vec<(String, Vec<String>)> {
+        let mut groups: Vec<(String, Vec<String>)> = Vec::new();
+        for book in &self.books {
+            let group = self.raw(book.group);
+            let name = self.raw(book.name).to_string();
+            match groups.last_mut() {
+                Some((title, names)) if title == group => names.push(name),
+                _ => groups.push((group.to_string(), vec![name])),
+            }
+        }
+        groups
     }
 
     pub fn get_book(&self, name: &str) -> Result<&Book> {
