@@ -33,16 +33,14 @@ impl Component for LogosFooter {
         .areas(area);
 
         Line::from(vec![
-            Span::styled(&self.app_name, Style::new().white().bold()),
-            Span::styled(&self.version, Style::new().dark_gray().bold()),
+            Span::styled(&self.app_name, theme::FOOTER_APP_NAME),
+            Span::styled(&self.version, theme::FOOTER_VERSION),
         ])
-        .bg(Color::Black)
+        .style(theme::FOOTER)
         .render(left_area, buf);
 
         Line::from(self.keymaps.as_str())
-            .bg(Color::Black)
-            .bold()
-            .red()
+            .style(theme::FOOTER.patch(theme::FOOTER_KEYMAPS))
             .render(right_area, buf);
 
         Ok(())

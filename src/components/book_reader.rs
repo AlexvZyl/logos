@@ -112,12 +112,8 @@ impl Component for BookReader {
         let block = Block::default()
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
-            .title(title.yellow().bold())
-            .border_style(if self.focused {
-                Style::default().blue()
-            } else {
-                Style::default()
-            });
+            .title(Span::styled(title, theme::TITLE))
+            .border_style(theme::border(self.focused));
 
         let padded = Self::layout(block.inner(area), self.scrolled_offset, self.num_columns);
         block.render(area, buf);

@@ -3,6 +3,7 @@
 pub use crate::app::events::AppEvent;
 pub use crate::config::*;
 pub use crate::error::{Error, Result};
+pub(crate) use crate::theme;
 
 pub use std::collections::HashMap;
 pub use std::path::{Path, PathBuf};

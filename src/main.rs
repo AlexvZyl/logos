@@ -5,6 +5,7 @@ mod config;
 mod error;
 mod filesystem;
 mod prelude;
+mod theme;
 
 use crate::app::events::{KeyMap, UserAction};
 use crate::components::Component;

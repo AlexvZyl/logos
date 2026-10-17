@@ -26,13 +26,13 @@ impl BookLayout {
             }
             wrapper.rows.push(Line::styled(
                 format!("Chapter {}", chapter.number),
-                Style::default().italic().blue(),
+                theme::CHAPTER_HEADING,
             ));
 
             for verse in chapter.get_verses() {
                 let text = verse.collect_string(bible.get_raw_data());
                 let mut words = text.split_whitespace();
-                let number = Span::styled(verse.number.to_string(), Style::default().dark_gray());
+                let number = Span::styled(verse.number.to_string(), theme::VERSE_NUMBER);
 
                 // Keep the verse number attached to the first word.
                 match words.next() {

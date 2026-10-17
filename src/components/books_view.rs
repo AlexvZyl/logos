@@ -1,7 +1,6 @@
 use crate::app::events::{AppEvent, UserAction};
 use crate::components::Component;
 use crate::prelude::*;
-use ratatui::prelude::Stylize;
 use ratatui::widgets::{Block, BorderType, Borders};
 
 pub struct BooksView {
@@ -22,7 +21,7 @@ impl BooksView {
         // TODO: Only use nerd font icons if available.
         let selected_lines = BooksView::build_line_cache(&books, "  ")
             .into_iter()
-            .map(|l| l.cyan().bold())
+            .map(|l| l.style(theme::SELECTED))
             .collect();
         BooksView {
             books,
@@ -77,12 +76,8 @@ impl Component for BooksView {
         let block = Block::default()
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
-            .title(" [1] Books ".yellow().bold())
-            .border_style(if self.focused {
-                Style::default().blue()
-            } else {
-                Style::default()
-            });
+            .title(Span::styled(" [1] Books ", theme::TITLE))
+            .border_style(theme::border(self.focused));
 
         let inner = block.inner(area);
         block.render(area, buf);

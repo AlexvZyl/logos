@@ -41,7 +41,7 @@ impl Component for HelpOverlay {
             .iter()
             .map(|(keys, description)| {
                 Line::from(vec![
-                    Span::styled(format!("{keys:<key_width$}"), Style::default().yellow()),
+                    Span::styled(format!("{keys:<key_width$}"), theme::KEY_HINT),
                     Span::raw("   "),
                     Span::raw(*description),
                 ])
@@ -51,9 +51,9 @@ impl Component for HelpOverlay {
         let block = Block::default()
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
-            .border_style(Style::default().blue())
+            .border_style(theme::BORDER_FOCUSED)
             .padding(Padding::new(2, 2, 1, 1))
-            .title(" Keybinds ".yellow().bold());
+            .title(Span::styled(" Keybinds ", theme::TITLE));
 
         Clear.render(popup, buf);
         Paragraph::new(lines).block(block).render(popup, buf);

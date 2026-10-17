@@ -27,12 +27,8 @@ impl Component for References {
         let block = Block::default()
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
-            .title(" [3] References ".yellow().bold())
-            .border_style(if self.focused {
-                Style::default().blue()
-            } else {
-                Style::default()
-            });
+            .title(Span::styled(" [3] References ", theme::TITLE))
+            .border_style(theme::border(self.focused));
 
         block.render(area, buf);
         Ok(())

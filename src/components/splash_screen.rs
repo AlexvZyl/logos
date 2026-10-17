@@ -3,7 +3,6 @@ use crate::components::Component;
 use crate::config::VERSION;
 use crate::prelude::*;
 use ratatui::layout::{Alignment, Constraint, Direction, Layout};
-use ratatui::prelude::Stylize;
 use ratatui::text::{Line, Text};
 use tui_big_text::{BigText, PixelSize};
 
@@ -20,17 +19,16 @@ impl Component for SplashScreen {
         let big_text = BigText::builder()
             .pixel_size(PixelSize::Full)
             .centered()
-            .lines(vec!["LOGOS".yellow().into()])
+            .lines(vec![Line::styled("LOGOS", theme::LOGO)])
             .build();
 
         let version = Paragraph::new(format!("v{VERSION}"))
             .alignment(Alignment::Center)
-            .italic()
-            .dark_gray();
+            .style(theme::MUTED.italic());
 
         let menu = Paragraph::new(Text::from(vec![
-            Line::from(vec!["[r]".cyan().bold(), " Reader".white()]),
-            Line::from(vec!["[q]".red().bold(), " Quit  ".white()]),
+            Line::from(vec![Span::styled("[r]", theme::KEY_HINT), Span::styled(" Reader", theme::TEXT)]),
+            Line::from(vec![Span::styled("[q]", theme::KEY_HINT_DANGER), Span::styled(" Quit  ", theme::TEXT)]),
         ]))
         .alignment(Alignment::Center);
 
