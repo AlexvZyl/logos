@@ -255,25 +255,34 @@ enum TitleOf {
 
 impl Bible {
     pub fn from_translation(translation: &str) -> Result<Bible> {
-        let file = get_translations()
+        let compressed = get_translations()
             // TODO: Select translation from UI.
             .get("KJV")
             .ok_or(Error::UnsupprtedTranslation(translation.to_string()))?;
-        Bible::from_file(file)
+        let start = Instant::now();
+        let raw = decompress_xz(compressed)?;
+        info!("Decompressed {translation} in {:?}", start.elapsed());
+        Bible::from_raw(raw)
     }
 
+    /// For translations that are not built in.
+    #[allow(dead_code)]
     pub fn from_file(path: &std::path::Path) -> Result<Bible> {
         info!("Loading {:?} into memory", path);
         let start = Instant::now();
         let raw = if is_xz_compressed_xml(path) {
-            decompress_xz(path)?
+            decompress_xz(&std::fs::read(path)?)?
         } else if is_xml_file(path) {
             std::fs::read_to_string(path)?
         } else {
             return Err(Error::InvalidBibleFile);
         };
         info!("Loaded {:?} in {:?}", path, start.elapsed());
+        Bible::from_raw(raw)
+    }
 
+    /// `raw` is the OSIS XML.
+    fn from_raw(raw: String) -> Result<Bible> {
         if raw.len() > u32::MAX as usize {
             return Err(Error::InvalidBibleFile);
         }

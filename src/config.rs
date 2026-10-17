@@ -1,14 +1,15 @@
 use crate::prelude::*;
 use std::{sync::OnceLock, time::Duration};
 
-type Translations = HashMap<&'static str, std::path::PathBuf>;
+/// xz compressed OSIS files, built into the binary.
+type Translations = HashMap<&'static str, &'static [u8]>;
 
-// TODO: Correctly locate assets.
 static TRANSLATIONS: OnceLock<Translations> = OnceLock::new();
 
 pub fn get_translations() -> &'static Translations {
-    TRANSLATIONS
-        .get_or_init(|| HashMap::from([("KJV", PathBuf::from("assets/eng-kjv.osis.xml.xz"))]))
+    TRANSLATIONS.get_or_init(|| {
+        HashMap::from([("KJV", include_bytes!("../assets/eng-kjv.osis.xml.xz").as_slice())])
+    })
 }
 
 pub const VERSION: &str = env!("GIT_HASH");

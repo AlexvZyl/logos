@@ -1,10 +1,8 @@
 use crate::prelude::*;
 use std::io::Read;
 
-pub fn decompress_xz(path: &std::path::Path) -> Result<String> {
-    let compressed = std::fs::read(path)?;
-
-    let mut decompressor = xz2::read::XzDecoder::new(compressed.as_slice());
+pub fn decompress_xz(compressed: &[u8]) -> Result<String> {
+    let mut decompressor = xz2::read::XzDecoder::new(compressed);
     let mut decompressed = Vec::new();
     decompressor.read_to_end(&mut decompressed)?;
 
