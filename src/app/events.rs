@@ -93,29 +93,57 @@ impl KeyMap {
         self.0.get(&(*key, modifiers)).copied()
     }
 
-    /// Returns `(keys, description)`, with all keys for the same action grouped.
-    pub fn help_entries(&self) -> Vec<(String, &'static str)> {
-        let mut pairs: Vec<(&'static str, String)> = self
-            .0
-            .iter()
-            .map(|((code, modifiers), action)| (action.description(), format_key(code, *modifiers)))
-            .collect();
-        pairs.sort();
-        pairs.dedup();
+    /// Returns `(keys, description)` per section in `HELP_SECTIONS` order, with all keys for the
+    /// same action grouped.  Plain keys are listed before modified ones.
+    pub fn help_entries(&self) -> Vec<Vec<(String, &'static str)>> {
+        let mut bindings: Vec<_> = self.0.iter().collect();
+        bindings.sort_by_key(|&(&(code, mods), _)| (mods.bits(), format_key(&code, mods)));
 
-        let mut entries: Vec<(String, &'static str)> = Vec::new();
-        for (description, key) in pairs {
-            match entries.last_mut() {
-                Some((keys, d)) if *d == description => {
-                    keys.push_str(", ");
-                    keys.push_str(&key);
+        let keys_for = |action: &UserAction| -> String {
+            let mut keys: Vec<String> = Vec::new();
+            for &(&(code, modifiers), a) in &bindings {
+                let key = format_key(&code, modifiers);
+                // Shifted characters format the same as unshifted ones.
+                if a.description() == action.description() && !keys.contains(&key) {
+                    keys.push(key);
                 }
-                _ => entries.push((key, description)),
             }
-        }
-        entries
+            keys.join(", ")
+        };
+
+        HELP_SECTIONS
+            .iter()
+            .map(|actions| {
+                actions
+                    .iter()
+                    .map(|a| (keys_for(a), a.description()))
+                    .filter(|(keys, _)| !keys.is_empty())
+                    .collect()
+            })
+            .collect()
     }
 }
+
+/// Sections of the help menu, in display order.  Actions are matched by description, so a
+/// single `JumpToWindow` covers all of its indices.
+const HELP_SECTIONS: &[&[UserAction]] = &[
+    &[UserAction::ToggleHelp, UserAction::Quit],
+    &[
+        UserAction::IncrementWindow,
+        UserAction::DecrementWindow,
+        UserAction::JumpToWindow(0),
+        UserAction::OpenReader,
+    ],
+    &[
+        UserAction::MoveDown,
+        UserAction::MoveUp,
+        UserAction::HalfPageDown,
+        UserAction::HalfPageUp,
+        UserAction::NextPage,
+        UserAction::PrevPage,
+    ],
+    &[UserAction::IncrementColumns, UserAction::DecrementColumns],
+];
 
 /// Shift is implied by the character itself, so it is not shown.
 fn format_key(code: &KeyCode, modifiers: KeyModifiers) -> String {
