@@ -28,6 +28,7 @@ impl Component for SplashScreen {
 
         let menu = Paragraph::new(Text::from(vec![
             Line::from(vec![Span::styled("[r]", theme::KEY_HINT), Span::styled(" Reader", theme::TEXT)]),
+            Line::from(vec![Span::styled("[?]", theme::KEY_HINT), Span::styled(" Help  ", theme::TEXT)]),
             Line::from(vec![Span::styled("[q]", theme::KEY_HINT_DANGER), Span::styled(" Quit  ", theme::TEXT)]),
         ]))
         .alignment(Alignment::Center);
@@ -39,7 +40,7 @@ impl Component for SplashScreen {
                 Constraint::Length(8),
                 Constraint::Length(1),
                 Constraint::Length(1),
-                Constraint::Length(2),
+                Constraint::Length(3),
                 Constraint::Fill(1),
             ])
             .split(rect);
