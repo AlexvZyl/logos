@@ -1,4 +1,5 @@
 use crate::app::events::AppEvent;
+use crate::chars::Icon;
 use crate::components::Component;
 use crate::config::VERSION;
 use crate::prelude::*;
@@ -13,8 +14,7 @@ pub struct LogosFooter {
 impl LogosFooter {
     pub fn new() -> Self {
         Self {
-            // TODO: Check for these icons support before just rendering it.
-            app_name: "  logos ".to_string(),
+            app_name: format!(" {} logos ", Icon::App.as_str()),
             version: format!("[{VERSION}]"),
             help: String::from("?:help  "),
             keymaps: String::from("q:quit "),

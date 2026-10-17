@@ -1,4 +1,5 @@
 use crate::app::events::{AppEvent, KeyMap};
+use crate::chars::Symbol;
 use crate::components::Component;
 use crate::prelude::*;
 use ratatui::widgets::{Block, BorderType, Borders, Clear, Padding};
@@ -36,7 +37,8 @@ impl Component for HelpOverlay {
         let mut lines: Vec<Line> = Vec::new();
         for (i, entries) in self.sections.iter().enumerate() {
             if i > 0 {
-                lines.push(Line::styled("─".repeat(content_width), theme::MUTED));
+                let line = Symbol::HorizontalLine.as_str().repeat(content_width);
+                lines.push(Line::styled(line, theme::MUTED));
             }
             lines.extend(entries.iter().map(|(keys, description)| {
                 Line::from(vec![

@@ -1,4 +1,5 @@
 use crate::app::events::{AppEvent, UserAction};
+use crate::chars::{Icon, Symbol};
 use crate::components::Component;
 use crate::prelude::*;
 use ratatui::widgets::{Block, BorderType, Borders};
@@ -28,8 +29,8 @@ pub struct BooksView {
 impl BooksView {
     pub fn new(books: Vec<String>) -> Self {
         let all_lines = BooksView::build_line_cache(&books, "   ");
-        // TODO: Only use nerd font icons if available.
-        let selected_lines = BooksView::build_line_cache(&books, "  ")
+        let selected_prefix = format!(" {} ", Icon::Selected.as_str());
+        let selected_lines = BooksView::build_line_cache(&books, &selected_prefix)
             .into_iter()
             .map(|l| l.style(theme::SELECTED))
             .collect();
@@ -83,7 +84,9 @@ impl BooksView {
         let max_offset = self.books.len() - self.visible;
         let start = self.scrolled_offset.min(max_offset) * (track - thumb) / max_offset;
         for row in start..start + thumb {
-            buf[(x, area.y + 1 + row as u16)].set_symbol("▐").set_style(style);
+            buf[(x, area.y + 1 + row as u16)]
+                .set_symbol(Symbol::ScrollbarThumb.as_str())
+                .set_style(style);
         }
     }
 
