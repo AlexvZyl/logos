@@ -32,6 +32,8 @@ pub struct RawSpan {
 
 impl RawSpan {
     fn new(start: usize, end: usize) -> Self {
+        assert!(start <= end);
+        assert!(end <= u32::MAX as usize);
         Self {
             start: start as u32,
             end: end as u32,
@@ -333,6 +335,7 @@ impl Bible {
                 Event::Empty(ref e)
                     if e.name().as_ref() == b"verse" && Self::has_attr(e, b"sID") =>
                 {
+                    assert!(!in_verse);
                     in_verse = true;
                     if let Some(ch) = books.last_mut().and_then(|b| b.chapters.last_mut()) {
                         ch.verses.push(Verse::new(current_verse));
@@ -342,6 +345,7 @@ impl Bible {
                 Event::Empty(ref e)
                     if e.name().as_ref() == b"verse" && Self::has_attr(e, b"eID") =>
                 {
+                    assert!(in_verse);
                     in_verse = false;
                 }
                 // Entities arrive as their own event, keep them escaped in the span.
@@ -359,6 +363,7 @@ impl Bible {
             }
         }
 
+        assert!(!in_verse);
         info!("Built index in {:?}", start.elapsed());
         Ok(books)
     }
@@ -371,6 +376,10 @@ impl Bible {
             .attributes()
             .filter_map(|a| a.ok())
             .find(|a| a.key.as_ref() == key)?;
+        // An owned value is a copy, so its pointer says nothing about where it is in `raw`.
+        if !matches!(a.value, std::borrow::Cow::Borrowed(_)) {
+            return None;
+        }
         let start = (a.value.as_ptr() as usize).checked_sub(raw.as_ptr() as usize)?;
         let end = start + a.value.len();
         (end <= raw.len()).then(|| RawSpan::new(start, end))

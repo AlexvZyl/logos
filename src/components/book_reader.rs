@@ -149,6 +149,7 @@ impl Component for BookReader {
         let padded = Self::layout(block.inner(area), self.scrolled_offset, self.num_columns);
 
         let columns = Self::columns(padded, self.num_columns);
+        assert_eq!(columns.len(), self.num_columns);
         let width = columns[0].width as usize;
         if self.book_changed || self.book_layout.as_ref().is_none_or(|l| l.width != width) {
             let book = self.bible.get_book(&self.current_book_name)?;

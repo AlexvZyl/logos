@@ -28,6 +28,7 @@ pub struct BooksView {
 
 impl BooksView {
     pub fn new(books: Vec<String>) -> Self {
+        assert!(!books.is_empty());
         let all_lines = BooksView::build_line_cache(&books, "   ");
         let selected_prefix = format!(" {} ", Icon::Selected.as_str());
         let selected_lines = BooksView::build_line_cache(&books, &selected_prefix)
@@ -83,6 +84,7 @@ impl BooksView {
         let thumb = THUMB_HEIGHT.min(track);
         let max_offset = self.books.len() - self.visible;
         let start = self.scrolled_offset.min(max_offset) * (track - thumb) / max_offset;
+        assert!(start + thumb <= track);
         for row in start..start + thumb {
             buf[(x, area.y + 1 + row as u16)]
                 .set_symbol(Symbol::ScrollbarThumb.as_str())
@@ -139,7 +141,8 @@ impl Component for BooksView {
         // Scrolling logic.
         let visible = inner.height as usize;
         self.visible = visible;
-        if self.follow_selection {
+        // Nothing is visible to follow at zero height.
+        if self.follow_selection && visible > 0 {
             let min_index = self.scrolled_offset;
             let max_index = self.scrolled_offset + visible - 1;
             if self.selected_book_index < min_index {
@@ -148,7 +151,11 @@ impl Component for BooksView {
             if self.selected_book_index > max_index {
                 self.scrolled_offset += self.selected_book_index - max_index;
             }
+            let view = self.scrolled_offset..self.scrolled_offset + visible;
+            assert!(view.contains(&self.selected_book_index));
         }
+        // Growing the terminal would otherwise leave blank rows below the last book.
+        self.scrolled_offset = self.scrolled_offset.min(self.books.len().saturating_sub(visible));
 
         self.render_scrollbar(area, border_style, buf);
 

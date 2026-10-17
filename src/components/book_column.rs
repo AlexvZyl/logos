@@ -63,6 +63,9 @@ impl BookLayout {
             wrapper.flush();
         }
 
+        assert_eq!(wrapper.rows.len(), wrapper.positions.len());
+        // `row_of` binary searches the positions.
+        assert!(wrapper.positions.is_sorted());
         BookLayout {
             width,
             rows: wrapper.rows,
@@ -106,6 +109,7 @@ impl BookLayout {
         offset: usize,
         height: usize,
     ) -> Vec<Line<'static>> {
+        assert!(index < num_columns);
         let stride = height + PAGE_GAP;
         (offset..offset + height)
             .map(|r| {
@@ -222,6 +226,7 @@ impl Wrapper {
     }
 
     fn flush(&mut self) {
+        assert!(self.current_width <= self.width);
         if !self.current.is_empty() {
             self.rows.push(Line::from(std::mem::take(&mut self.current)));
             self.positions.push(self.row_start);
