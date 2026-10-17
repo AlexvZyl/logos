@@ -6,7 +6,7 @@
 A bible TUI app.  For the nerdiest of Christians.
 
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/e4f496e6-fed1-4d37-a3a3-55fcd4d163f6" width="75%" />
+  <img width="2559" height="1439" alt="image" src="https://github.com/user-attachments/assets/50e14915-46bb-4968-ba07-ff41291d6bc2" />
 </p>
 
 
