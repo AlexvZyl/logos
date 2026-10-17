@@ -6,7 +6,9 @@ mod error;
 mod filesystem;
 mod prelude;
 
-use crate::app::events::KeyMap;
+use crate::app::events::{KeyMap, UserAction};
+use crate::components::Component;
+use crate::components::help_overlay::HelpOverlay;
 use crate::app::state::AppStateEnum;
 use crate::app::state_dashboard::Dashboard;
 use crate::prelude::*;
@@ -42,6 +44,8 @@ fn app_loop(terminal: &mut DefaultTerminal) -> Result<()> {
     state = state.update(AppEvent::AppStart)?;
 
     let keymap = KeyMap::default();
+    let mut help = HelpOverlay::new(&keymap);
+    let mut show_help = false;
     loop {
         // Wait indefinitely for event.
         // TODO: I really want some kind of tick mechanism.
@@ -58,8 +62,18 @@ fn app_loop(terminal: &mut DefaultTerminal) -> Result<()> {
                     continue;
                 }
 
+                // Any key closes the help overlay.
+                if show_help {
+                    show_help = false;
+                    continue;
+                }
+
                 if let Some(action) = keymap.get(&key.code, key.modifiers) {
                     trace!("Key: {}, Mod: {}", key.code, key.modifiers);
+                    if matches!(action, UserAction::ToggleHelp) {
+                        show_help = true;
+                        continue;
+                    }
                     state = state.update(AppEvent::UserAction(action))?;
                 }
             }
@@ -73,6 +87,9 @@ fn app_loop(terminal: &mut DefaultTerminal) -> Result<()> {
         // TODO: I want rendering statistics.
         terminal.draw(|f| {
             let _ = state.render(f).inspect_err(|e| error!("{e}"));
+            if show_help {
+                let _ = help.render(f.area(), f.buffer_mut()).inspect_err(|e| error!("{e}"));
+            }
         })?;
     }
 }
