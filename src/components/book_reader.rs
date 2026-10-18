@@ -6,6 +6,7 @@ use crate::bible::Bible;
 use crate::components::Component;
 use crate::components::book_column::{BookLayout, PAGE_GAP, Position};
 use crate::prelude::*;
+use unicode_width::UnicodeWidthStr;
 
 const MAX_COLUMNS: usize = 4;
 
@@ -140,6 +141,7 @@ impl Component for BookReader {
 
     fn render(&mut self, area: Rect, buf: &mut Buffer) -> Result<()> {
         let title = format!(" [2] {} ", self.current_book_name);
+        let title_width = title.width();
         let block = Block::default()
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
@@ -177,7 +179,17 @@ impl Component for BookReader {
 
         let screens = layout.screen_count(n, height).max(1);
         let screen = layout.screen_at(self.scrolled_offset, height) + 1;
-        let page = format!(" [{}/{}] ", screen.min(screens), screens);
+        // Padded to the width of the total, so the title does not shift while paging.
+        let digits = screens.to_string().len();
+        let screen = screen.min(screens);
+        let page = format!(" [{screen:0digits$}/{screens}] ");
+        let translation = format!(" [{}] ", self.bible.name());
+        // Centred on the whole border, hidden when it would overlap the other titles.
+        let side = title_width.max(page.width()) + 1;
+        let block = match 2 * side + translation.width() <= area.width as usize {
+            true => block.title_top(Line::styled(translation, theme::MUTED).centered()),
+            false => block,
+        };
         block
             .title_top(Line::styled(page, theme::MUTED).right_aligned())
             .render(area, buf);

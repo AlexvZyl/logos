@@ -12,6 +12,8 @@ use std::time::Instant;
 /// Owns the raw file.  Everything else is a `RawSpan` into it.
 #[derive(Debug)]
 pub struct Bible {
+    /// e.g. `KJV`, for built in translations.
+    short_name: Option<&'static str>,
     metadata: Metadata,
     /// In file order.
     books: Vec<Book>,
@@ -255,14 +257,16 @@ enum TitleOf {
 
 impl Bible {
     pub fn from_translation(translation: &str) -> Result<Bible> {
-        let compressed = get_translations()
-            // TODO: Select translation from UI.
-            .get("KJV")
+        // TODO: Select translation from UI.
+        let (&short_name, compressed) = get_translations()
+            .get_key_value(translation)
             .ok_or(Error::UnsupprtedTranslation(translation.to_string()))?;
         let start = Instant::now();
         let raw = decompress_xz(compressed)?;
         info!("Decompressed {translation} in {:?}", start.elapsed());
-        Bible::from_raw(raw)
+        let mut bible = Bible::from_raw(raw)?;
+        bible.short_name = Some(short_name);
+        Ok(bible)
     }
 
     /// For translations that are not built in.
@@ -289,6 +293,7 @@ impl Bible {
         let metadata = Self::parse_metadata(&raw)?;
         let books = Self::build_index_from_osis(&raw)?;
         return Ok(Bible {
+            short_name: None,
             metadata,
             books,
             raw: raw,
@@ -315,6 +320,11 @@ impl Bible {
             .collect();
         let s = quick_xml::escape::unescape(&s).unwrap_or(s.as_str().into());
         s.split_whitespace().collect::<Vec<_>>().join(" ")
+    }
+
+    /// Short name if there is one, e.g. `KJV`, otherwise the title.
+    pub fn name(&self) -> &str {
+        self.short_name.unwrap_or_else(|| self.raw(self.metadata.title))
     }
 
     #[allow(dead_code)]

@@ -31,7 +31,7 @@ impl AppStateTrait for Dashboard {
 
         match event {
             AppEvent::AppStart => {
-                self.app_data = Some(PersistentAppData::from_translation("KVJ")?);
+                self.app_data = Some(PersistentAppData::from_translation("KJV")?);
             }
             AppEvent::UserAction(action) => match action {
                 UserAction::Quit => return Ok(AppStateEnum::Exit),
