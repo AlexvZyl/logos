@@ -1,4 +1,4 @@
-use crate::app::events::{AppEvent, KeyMap};
+use crate::app::events::{AppEvent, KeyMap, View};
 use crate::chars::Symbol;
 use crate::components::Component;
 use crate::prelude::*;
@@ -15,9 +15,10 @@ pub struct HelpOverlay {
 }
 
 impl HelpOverlay {
-    pub fn new(keymap: &KeyMap) -> Self {
+    /// Only lists the actions available in `view`.
+    pub fn new(keymap: &KeyMap, view: View) -> Self {
         Self {
-            sections: keymap.help_entries(),
+            sections: keymap.help_entries(view),
         }
     }
 }

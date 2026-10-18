@@ -53,6 +53,56 @@ impl UserAction {
     }
 }
 
+impl UserAction {
+    /// Same action, ignoring data such as the `JumpToWindow` index.
+    pub fn same(self, other: UserAction) -> bool {
+        std::mem::discriminant(&self) == std::mem::discriminant(&other)
+    }
+}
+
+/// What the user is looking at.  Decides which actions are available.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum View {
+    Dashboard,
+    Books,
+    Reader,
+    References,
+    Strongs,
+}
+
+impl View {
+    /// Available actions, grouped into help sections in display order.
+    pub const fn sections(self) -> &'static [&'static [UserAction]] {
+        match self {
+            View::Dashboard => &[GLOBAL, &[UserAction::OpenReader]],
+            View::Books => &[GLOBAL, WINDOWS, NAVIGATION],
+            View::Reader => &[GLOBAL, WINDOWS, NAVIGATION, COLUMNS],
+            View::References | View::Strongs => &[GLOBAL, WINDOWS],
+        }
+    }
+
+    pub fn has(self, action: UserAction) -> bool {
+        self.sections().iter().flat_map(|s| s.iter()).any(|a| a.same(action))
+    }
+}
+
+const GLOBAL: &[UserAction] = &[UserAction::ToggleHelp, UserAction::Quit];
+/// A single `JumpToWindow` covers all of its indices.
+const WINDOWS: &[UserAction] = &[
+    UserAction::IncrementWindow,
+    UserAction::DecrementWindow,
+    UserAction::JumpToWindow(0),
+];
+const NAVIGATION: &[UserAction] = &[
+    UserAction::MoveDown,
+    UserAction::MoveUp,
+    UserAction::HalfPageDown,
+    UserAction::HalfPageUp,
+    UserAction::NextPage,
+    UserAction::PrevPage,
+];
+const COLUMNS: &[UserAction] = &[UserAction::IncrementColumns, UserAction::DecrementColumns];
+
 /// Mappings of keys -> actions.
 ///
 /// TODO: This should go to a config file.
@@ -93,9 +143,9 @@ impl KeyMap {
         self.0.get(&(*key, modifiers)).copied()
     }
 
-    /// Returns `(keys, description)` per section in `HELP_SECTIONS` order, with all keys for the
-    /// same action grouped.  Plain keys are listed before modified ones.
-    pub fn help_entries(&self) -> Vec<Vec<(String, &'static str)>> {
+    /// Returns `(keys, description)` per section of `view`, with all keys for the same action
+    /// grouped.  Plain keys are listed before modified ones.
+    pub fn help_entries(&self, view: View) -> Vec<Vec<(String, &'static str)>> {
         let mut bindings: Vec<_> = self.0.iter().collect();
         bindings.sort_by_key(|&(&(code, mods), _)| (mods.bits(), format_key(&code, mods)));
 
@@ -104,14 +154,14 @@ impl KeyMap {
             for &(&(code, modifiers), a) in &bindings {
                 let key = format_key(&code, modifiers);
                 // Shifted characters format the same as unshifted ones.
-                if a.description() == action.description() && !keys.contains(&key) {
+                if a.same(*action) && !keys.contains(&key) {
                     keys.push(key);
                 }
             }
             keys.join(", ")
         };
 
-        HELP_SECTIONS
+        view.sections()
             .iter()
             .map(|actions| {
                 actions
@@ -123,27 +173,6 @@ impl KeyMap {
             .collect()
     }
 }
-
-/// Sections of the help menu, in display order.  Actions are matched by description, so a
-/// single `JumpToWindow` covers all of its indices.
-const HELP_SECTIONS: &[&[UserAction]] = &[
-    &[UserAction::ToggleHelp, UserAction::Quit],
-    &[
-        UserAction::IncrementWindow,
-        UserAction::DecrementWindow,
-        UserAction::JumpToWindow(0),
-        UserAction::OpenReader,
-    ],
-    &[
-        UserAction::MoveDown,
-        UserAction::MoveUp,
-        UserAction::HalfPageDown,
-        UserAction::HalfPageUp,
-        UserAction::NextPage,
-        UserAction::PrevPage,
-    ],
-    &[UserAction::IncrementColumns, UserAction::DecrementColumns],
-];
 
 /// Shift is implied by the character itself, so it is not shown.
 fn format_key(code: &KeyCode, modifiers: KeyModifiers) -> String {

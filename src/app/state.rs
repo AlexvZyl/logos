@@ -1,4 +1,5 @@
 use crate::app::data::PersistentAppData;
+use crate::app::events::View;
 use crate::app::state_dashboard::Dashboard;
 use crate::app::state_default_reader::DefaultReader;
 use crate::prelude::*;
@@ -9,6 +10,7 @@ pub trait AppStateTrait {
     fn from_state(state: AppStateEnum) -> Result<AppStateEnum>;
     fn update(self, event: AppEvent) -> Result<AppStateEnum>;
     fn render(&mut self, f: &mut Frame) -> Result<()>;
+    fn view(&self) -> View;
 }
 
 pub enum AppStateEnum {
@@ -34,6 +36,16 @@ impl AppStateEnum {
             AppStateEnum::DefaultReader(s) => s.update(event),
             AppStateEnum::Exit => {
                 panic!("Exit should not update")
+            }
+        }
+    }
+
+    pub fn view(&self) -> View {
+        match self {
+            AppStateEnum::Dashboard(s) => s.view(),
+            AppStateEnum::DefaultReader(s) => s.view(),
+            AppStateEnum::Exit => {
+                panic!("Exit has no view")
             }
         }
     }

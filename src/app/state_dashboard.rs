@@ -1,5 +1,5 @@
 use crate::app::data::PersistentAppData;
-use crate::app::events::UserAction;
+use crate::app::events::{UserAction, View};
 use crate::app::state::{AppStateEnum, AppStateTrait};
 use crate::app::state_default_reader::DefaultReader;
 use crate::components::Component;
@@ -51,6 +51,10 @@ impl AppStateTrait for Dashboard {
 
         self.splash.render(area, buf)?;
         Ok(())
+    }
+
+    fn view(&self) -> View {
+        View::Dashboard
     }
 
     fn get_app_data(self) -> PersistentAppData {

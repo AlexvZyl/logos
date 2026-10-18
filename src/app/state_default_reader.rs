@@ -1,5 +1,5 @@
 use crate::app::data::PersistentAppData;
-use crate::app::events::{AppEvent, UserAction};
+use crate::app::events::{AppEvent, UserAction, View};
 use crate::app::state::{AppStateEnum, AppStateTrait};
 use crate::cache::{AppCache, ReaderCache};
 use crate::components::Component;
@@ -186,6 +186,15 @@ impl AppStateTrait for DefaultReader {
         self.strongs.render(strongs, buf)?;
         self.footer.render(footer, buf)?;
         Ok(())
+    }
+
+    fn view(&self) -> View {
+        match self.focused {
+            FocusedWindow::Books => View::Books,
+            FocusedWindow::Reader => View::Reader,
+            FocusedWindow::References => View::References,
+            FocusedWindow::Strongs => View::Strongs,
+        }
     }
 
     fn get_app_data(self) -> PersistentAppData {

@@ -47,8 +47,7 @@ fn app_loop(terminal: &mut DefaultTerminal) -> Result<()> {
     state = state.update(AppEvent::AppStart)?;
 
     let keymap = KeyMap::default();
-    let mut help = HelpOverlay::new(&keymap);
-    let mut show_help = false;
+    let mut help: Option<HelpOverlay> = None;
     loop {
         // Wait indefinitely for event.
         // TODO: I really want some kind of tick mechanism.
@@ -66,15 +65,18 @@ fn app_loop(terminal: &mut DefaultTerminal) -> Result<()> {
                 }
 
                 // Any key closes the help overlay.
-                if show_help {
-                    show_help = false;
+                if help.take().is_some() {
                     continue;
                 }
 
                 if let Some(action) = keymap.get(&key.code, key.modifiers) {
                     trace!("Key: {}, Mod: {}", key.code, key.modifiers);
+                    let view = state.view();
+                    if !view.has(action) {
+                        continue;
+                    }
                     if matches!(action, UserAction::ToggleHelp) {
-                        show_help = true;
+                        help = Some(HelpOverlay::new(&keymap, view));
                         continue;
                     }
                     state = state.update(AppEvent::UserAction(action))?;
@@ -90,7 +92,7 @@ fn app_loop(terminal: &mut DefaultTerminal) -> Result<()> {
         // TODO: I want rendering statistics.
         terminal.draw(|f| {
             let _ = state.render(f).inspect_err(|e| error!("{e}"));
-            if show_help {
+            if let Some(help) = &mut help {
                 let _ = help.render(f.area(), f.buffer_mut()).inspect_err(|e| error!("{e}"));
             }
         })?;
