@@ -64,6 +64,14 @@ impl BookReader {
         self.last_params = None;
     }
 
+    /// Whether the current book has `position`.  Verse `0` is the chapter heading.
+    pub fn contains(&self, position: Position) -> Result<bool> {
+        let book = self.bible.get_book(&self.current_book_name)?;
+        Ok(book.get_chapters().find(|c| c.number == position.chapter).is_some_and(|c| {
+            position.verse == 0 || c.get_verses().any(|v| v.number == position.verse)
+        }))
+    }
+
     pub fn set_book(&mut self, book: &str) {
         if self.current_book_name != book {
             self.current_book_name = book.to_string();

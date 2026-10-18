@@ -28,6 +28,14 @@ impl AppStateEnum {
         }
     }
 
+    /// Whether keys should be sent raw, as `AppEvent::Key`, rather than mapped to actions.
+    pub fn captures_input(&self) -> bool {
+        match self {
+            AppStateEnum::DefaultReader(s) => s.captures_input(),
+            AppStateEnum::Dashboard(_) | AppStateEnum::Exit => false,
+        }
+    }
+
     pub fn update(self, event: AppEvent) -> Result<AppStateEnum> {
         match self {
             AppStateEnum::Dashboard(s) => s.update(event),

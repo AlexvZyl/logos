@@ -1,4 +1,4 @@
-use crossterm::event::{KeyCode, KeyModifiers};
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use std::collections::HashMap;
 
 pub enum AppEvent {
@@ -10,6 +10,8 @@ pub enum AppEvent {
     Focus,
     /// Window defocus, specific to components.
     Defocus,
+    /// Raw key press, sent instead of `UserAction`s while the state captures text input.
+    Key(KeyEvent),
 }
 
 /// Actions that can be performed by the user.  They all should have key mappings.
@@ -30,6 +32,7 @@ pub enum UserAction {
     NextPage,
     PrevPage,
     ToggleHelp,
+    GoTo,
 }
 
 impl UserAction {
@@ -49,6 +52,7 @@ impl UserAction {
             UserAction::NextPage => "Next page",
             UserAction::PrevPage => "Previous page",
             UserAction::ToggleHelp => "Toggle keybinds",
+            UserAction::GoTo => "Go to chapter:verse",
         }
     }
 }
@@ -76,6 +80,8 @@ impl KeyMap {
         map.insert((KeyCode::Char('p'), none), UserAction::PrevPage);
         map.insert((KeyCode::Char('?'), none), UserAction::ToggleHelp);
         map.insert((KeyCode::Char('?'), KeyModifiers::SHIFT), UserAction::ToggleHelp);
+        map.insert((KeyCode::Char(':'), none), UserAction::GoTo);
+        map.insert((KeyCode::Char(':'), KeyModifiers::SHIFT), UserAction::GoTo);
         map.insert((KeyCode::Tab, none), UserAction::IncrementWindow);
         map.insert(
             (KeyCode::BackTab, KeyModifiers::SHIFT),
@@ -141,6 +147,7 @@ const HELP_SECTIONS: &[&[UserAction]] = &[
         UserAction::HalfPageUp,
         UserAction::NextPage,
         UserAction::PrevPage,
+        UserAction::GoTo,
     ],
     &[UserAction::IncrementColumns, UserAction::DecrementColumns],
 ];

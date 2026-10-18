@@ -6,6 +6,7 @@ use crate::components::Component;
 use crate::components::book_column::Position;
 use crate::components::book_reader::BookReader;
 use crate::components::books_view::BooksView;
+use crate::components::goto_prompt::{GotoPrompt, PromptOutcome};
 use crate::components::footer::LogosFooter;
 use crate::components::references::References;
 use crate::components::strongs::Strongs;
@@ -53,9 +54,37 @@ pub struct DefaultReader {
     pub references: References,
     pub strongs: Strongs,
     pub focused: FocusedWindow,
+    /// Open while the user types a `chapter[:verse]` to jump to in the reader.
+    pub goto: Option<GotoPrompt>,
 }
 
 impl DefaultReader {
+    /// Whether keys should be sent raw, as `AppEvent::Key`, rather than mapped to actions.
+    pub fn captures_input(&self) -> bool {
+        self.goto.is_some()
+    }
+
+    fn handle_goto_key(&mut self, key: crossterm::event::KeyEvent) -> Result<()> {
+        let Some(prompt) = &mut self.goto else {
+            return Ok(());
+        };
+        match prompt.handle_key(key) {
+            PromptOutcome::Pending => {}
+            PromptOutcome::Cancel => self.goto = None,
+            PromptOutcome::Submit(position) => {
+                if self.book_reader.contains(position)? {
+                    self.book_reader.set_position(position);
+                    self.goto = None;
+                } else if position.verse == 0 {
+                    prompt.set_error(format!("No chapter {}", position.chapter));
+                } else {
+                    prompt.set_error(format!("No verse {}:{}", position.chapter, position.verse));
+                }
+            }
+        }
+        Ok(())
+    }
+
     fn defocus_all(&mut self) -> Result<()> {
         self.books_view.update(&AppEvent::Defocus)?;
         self.book_reader.update(&AppEvent::Defocus)?;
@@ -121,6 +150,7 @@ impl AppStateTrait for DefaultReader {
             references: References::new(),
             strongs: Strongs::new(),
             focused: FocusedWindow::Books,
+            goto: None,
         }))
     }
 
@@ -144,6 +174,10 @@ impl AppStateTrait for DefaultReader {
                     3 => FocusedWindow::Strongs,
                     _ => self.focused,
                 })?;
+            }
+            AppEvent::Key(key) => self.handle_goto_key(*key)?,
+            AppEvent::UserAction(UserAction::GoTo) if self.focused == FocusedWindow::Reader => {
+                self.goto = Some(GotoPrompt::new());
             }
             // Turn the reader's pages while browsing books.
             AppEvent::UserAction(action @ (UserAction::NextPage | UserAction::PrevPage))
@@ -185,6 +219,9 @@ impl AppStateTrait for DefaultReader {
         self.references.render(references, buf)?;
         self.strongs.render(strongs, buf)?;
         self.footer.render(footer, buf)?;
+        if let Some(goto) = &mut self.goto {
+            goto.render(content, buf)?;
+        }
         Ok(())
     }
 

@@ -23,6 +23,8 @@ pub struct BookLayout {
     pub rows: Vec<Line<'static>>,
     /// Position at the start of each row.
     pub positions: Vec<Position>,
+    /// Row in which each position begins, in order.
+    starts: Vec<(Position, usize)>,
 }
 
 impl BookLayout {
@@ -30,13 +32,14 @@ impl BookLayout {
         let mut wrapper = Wrapper::new(width.max(1));
 
         for (i, chapter) in book.get_chapters().enumerate() {
+            // The gap belongs to the previous chapter, so jumps land on the heading.
+            if i > 0 {
+                wrapper.push_row(Line::default());
+            }
             wrapper.set_position(Position {
                 chapter: chapter.number,
                 verse: 0,
             });
-            if i > 0 {
-                wrapper.push_row(Line::default());
-            }
             wrapper.push_row(Line::styled(
                 format!("Chapter {}", chapter.number),
                 theme::CHAPTER_HEADING,
@@ -64,18 +67,21 @@ impl BookLayout {
         }
 
         assert_eq!(wrapper.rows.len(), wrapper.positions.len());
-        // `row_of` binary searches the positions.
-        assert!(wrapper.positions.is_sorted());
+        // `row_of` binary searches the starts.
+        assert!(wrapper.starts.is_sorted());
         BookLayout {
             width,
             rows: wrapper.rows,
             positions: wrapper.positions,
+            starts: wrapper.starts,
         }
     }
 
-    /// Row containing the start of `position`.
+    /// Row containing the start of `position`.  Positions missing from the book resolve to the
+    /// closest one before them.
     pub fn row_of(&self, position: Position) -> usize {
-        self.positions.partition_point(|&p| p <= position).saturating_sub(1)
+        let i = self.starts.partition_point(|&(p, _)| p <= position);
+        i.checked_sub(1).map_or(0, |i| self.starts[i].1)
     }
 
     /// Position of the first text row visible in the first column.
@@ -150,6 +156,9 @@ struct Wrapper {
     width: usize,
     rows: Vec<Line<'static>>,
     positions: Vec<Position>,
+    starts: Vec<(Position, usize)>,
+    /// `position` has been set, but its first content not yet placed.
+    pending_start: bool,
     current: Vec<Span<'static>>,
     current_width: usize,
     position: Position,
@@ -163,6 +172,8 @@ impl Wrapper {
             width,
             rows: Vec::new(),
             positions: Vec::new(),
+            starts: Vec::new(),
+            pending_start: false,
             current: Vec::new(),
             current_width: 0,
             position: Position::default(),
@@ -172,6 +183,7 @@ impl Wrapper {
 
     fn set_position(&mut self, position: Position) {
         self.position = position;
+        self.pending_start = true;
         if self.current.is_empty() {
             self.row_start = position;
         }
@@ -180,8 +192,16 @@ impl Wrapper {
     /// Pushes a full row, flushing any pending content first.
     fn push_row(&mut self, line: Line<'static>) {
         self.flush();
+        self.mark_start();
         self.rows.push(line);
         self.positions.push(self.position);
+    }
+
+    /// Records that `position` begins in the row about to be pushed.
+    fn mark_start(&mut self) {
+        if std::mem::take(&mut self.pending_start) {
+            self.starts.push((self.position, self.rows.len()));
+        }
     }
 
     fn push_unit(&mut self, unit: Vec<Span<'static>>) {
@@ -191,6 +211,7 @@ impl Wrapper {
         if self.current_width + separator + unit_width > self.width {
             self.flush();
         }
+        self.mark_start();
 
         if unit_width > self.width {
             unit.into_iter().for_each(|s| self.push_hard(s));
@@ -237,3 +258,30 @@ impl Wrapper {
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Verses span several rows; jumping to one must land on the row where it begins.
+    #[test]
+    fn row_of_finds_where_each_position_begins() {
+        let bible = Bible::from_translation("KJV").unwrap();
+        let book = bible.get_book("Genesis").unwrap();
+        let layout = BookLayout::new(&bible, book, 40);
+        let has_span = |row: usize, text: &str, style: Style| {
+            layout.rows[row].spans.iter().any(|s| s.content == text && s.style == style)
+        };
+
+        for chapter in book.get_chapters() {
+            let row = layout.row_of(Position { chapter: chapter.number, verse: 0 });
+            let heading = format!("Chapter {}", chapter.number);
+            assert_eq!(layout.rows[row].to_string(), heading);
+            for verse in chapter.get_verses() {
+                let position = Position { chapter: chapter.number, verse: verse.number };
+                let row = layout.row_of(position);
+                assert!(has_span(row, &verse.number.to_string(), theme::VERSE_NUMBER), "{position:?}");
+            }
+        }
+    }
+}

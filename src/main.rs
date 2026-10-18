@@ -71,7 +71,9 @@ fn app_loop(terminal: &mut DefaultTerminal) -> Result<()> {
                     continue;
                 }
 
-                if let Some(action) = keymap.get(&key.code, key.modifiers) {
+                if state.captures_input() {
+                    state = state.update(AppEvent::Key(key))?;
+                } else if let Some(action) = keymap.get(&key.code, key.modifiers) {
                     trace!("Key: {}, Mod: {}", key.code, key.modifiers);
                     if matches!(action, UserAction::ToggleHelp) {
                         show_help = true;
