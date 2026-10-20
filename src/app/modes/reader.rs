@@ -1,3 +1,4 @@
+use crate::app::command::Command;
 use crate::app::context::Context;
 use crate::app::events::{
     ActionSections, AppEvent, COLUMNS, GLOBAL, NAVIGATION, UserAction, WINDOWS,
@@ -128,6 +129,12 @@ impl ModeTrait for Reader {
                     3 => Panel::Strongs,
                     _ => self.focused,
                 })?;
+            }
+            AppEvent::Command(Command::Goto { book, position }) => {
+                self.books_view.select(book);
+                self.book_reader.set_book(book);
+                // After `set_book`, which resets the position when the book changes.
+                self.book_reader.set_position(*position);
             }
             // Turn the reader's pages while browsing books.
             AppEvent::UserAction(action @ (UserAction::NextPage | UserAction::PrevPage))

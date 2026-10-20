@@ -12,6 +12,8 @@ mod theme;
 use crate::app::events::{KeyMap, UserAction};
 use crate::components::Component;
 use crate::components::help_overlay::HelpOverlay;
+use crate::components::prompt::{Prompt, PromptKey};
+use crate::app::command;
 use crate::app::context::Context;
 use crate::app::modes::Mode;
 use crate::app::modes::dashboard::Dashboard;
@@ -52,6 +54,7 @@ fn app_loop(terminal: &mut DefaultTerminal) -> Result<()> {
 
     let keymap = KeyMap::default();
     let mut help: Option<HelpOverlay> = None;
+    let mut prompt: Option<Prompt> = None;
     loop {
         // Wait indefinitely for event.
         // TODO: I really want some kind of tick mechanism.
@@ -73,17 +76,43 @@ fn app_loop(terminal: &mut DefaultTerminal) -> Result<()> {
                     continue;
                 }
 
-                if let Some(action) = keymap.get(&key.code, key.modifiers) {
+                // The prompt takes all keys while open, bypassing the keymap.
+                if let Some(open) = &mut prompt {
+                    // Any key closes an error.
+                    if open.error().is_some() {
+                        prompt = None;
+                        continue;
+                    }
+                    match open.key(key) {
+                        PromptKey::Edit => {}
+                        PromptKey::Cancel => prompt = None,
+                        PromptKey::Submit(input) => match command::parse(&input, &ctx.bible) {
+                            Ok(None) => prompt = None,
+                            Ok(Some(event)) => {
+                                if let AppEvent::UserAction(action) = event
+                                    && !available(&mode, action)
+                                {
+                                    open.set_error(format!("Not available: {input}"));
+                                } else {
+                                    prompt = None;
+                                    mode = mode.update(&mut ctx, &event)?;
+                                }
+                            }
+                            Err(error) => open.set_error(error),
+                        },
+                    }
+                } else if let Some(action) = keymap.get(&key.code, key.modifiers) {
                     trace!("Key: {}, Mod: {}", key.code, key.modifiers);
-                    let actions = mode.actions();
-                    if !actions.iter().flat_map(|s| s.iter()).any(|a| a.same(action)) {
+                    if !available(&mode, action) {
                         continue;
                     }
-                    if matches!(action, UserAction::ToggleHelp) {
-                        help = Some(HelpOverlay::new(&keymap, actions));
-                        continue;
+                    match action {
+                        UserAction::ToggleHelp => {
+                            help = Some(HelpOverlay::new(&keymap, mode.actions()));
+                        }
+                        UserAction::OpenPrompt => prompt = Some(Prompt::new()),
+                        _ => mode = mode.update(&mut ctx, &AppEvent::UserAction(action))?,
                     }
-                    mode = mode.update(&mut ctx, &AppEvent::UserAction(action))?;
                 }
             }
 
@@ -100,8 +129,16 @@ fn app_loop(terminal: &mut DefaultTerminal) -> Result<()> {
             if let Some(help) = &mut help {
                 let _ = help.render(f.area(), f.buffer_mut()).inspect_err(|e| error!("{e}"));
             }
+            if let Some(prompt) = &mut prompt {
+                let area = Prompt::area(f.area());
+                let _ = prompt.render(area, f.buffer_mut()).inspect_err(|e| error!("{e}"));
+            }
         })?;
     }
+}
+
+fn available(mode: &Mode, action: UserAction) -> bool {
+    mode.actions().iter().flat_map(|s| s.iter()).any(|a| a.same(action))
 }
 
 fn main() -> Result<()> {

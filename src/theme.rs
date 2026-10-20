@@ -20,6 +20,10 @@ pub const FOOTER_VERSION: Style = Style::new().fg(Color::DarkGray).add_modifier(
 pub const FOOTER_HELP: Style = Style::new().fg(Color::Blue).add_modifier(Modifier::BOLD);
 pub const FOOTER_KEYMAPS: Style = Style::new().fg(Color::Red).add_modifier(Modifier::BOLD);
 
+pub const PROMPT: Style = Style::new().fg(Color::White).bg(Color::Black);
+pub const PROMPT_CURSOR: Style = Style::new().add_modifier(Modifier::REVERSED);
+pub const PROMPT_ERROR: Style = Style::new().fg(Color::Red).bg(Color::Black);
+
 pub fn border(focused: bool) -> Style {
     if focused { BORDER_FOCUSED } else { BORDER }
 }

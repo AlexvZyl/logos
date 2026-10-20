@@ -1,3 +1,4 @@
+use crate::app::command::Command;
 use crate::app::context::Context;
 use crate::app::events::{ActionSections, GLOBAL, UserAction};
 use crate::app::modes::reader::Reader;
@@ -26,6 +27,11 @@ impl ModeTrait for Dashboard {
         match event {
             AppEvent::UserAction(UserAction::Quit) => return Ok(Mode::Exit),
             AppEvent::UserAction(UserAction::OpenReader) => {
+                return Ok(Mode::Reader(Reader::new(ctx)?));
+            }
+            AppEvent::Command(Command::Goto { book, position }) => {
+                ctx.session.book = book.clone();
+                ctx.session.position = *position;
                 return Ok(Mode::Reader(Reader::new(ctx)?));
             }
             _ => {}

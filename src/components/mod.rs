@@ -3,6 +3,7 @@ pub mod book_reader;
 pub mod books_view;
 pub mod footer;
 pub mod help_overlay;
+pub mod prompt;
 pub mod references;
 pub mod splash_screen;
 pub mod strongs;

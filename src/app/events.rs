@@ -1,9 +1,12 @@
+use crate::app::command::Command;
 use crossterm::event::{KeyCode, KeyModifiers};
 use std::collections::HashMap;
 
 pub enum AppEvent {
     /// Action performed/requested by the user.
     UserAction(UserAction),
+    /// Command entered in the prompt.
+    Command(Command),
     /// Window focus, specific to components.
     Focus,
     /// Window defocus, specific to components.
@@ -28,6 +31,7 @@ pub enum UserAction {
     NextPage,
     PrevPage,
     ToggleHelp,
+    OpenPrompt,
 }
 
 impl UserAction {
@@ -47,6 +51,7 @@ impl UserAction {
             UserAction::NextPage => "Next page",
             UserAction::PrevPage => "Previous page",
             UserAction::ToggleHelp => "Toggle keybinds",
+            UserAction::OpenPrompt => "Command prompt",
         }
     }
 }
@@ -61,7 +66,8 @@ impl UserAction {
 /// Available actions, grouped into help sections in display order.
 pub type ActionSections = &'static [&'static [UserAction]];
 
-pub const GLOBAL: &[UserAction] = &[UserAction::ToggleHelp, UserAction::Quit];
+pub const GLOBAL: &[UserAction] =
+    &[UserAction::ToggleHelp, UserAction::OpenPrompt, UserAction::Quit];
 /// A single `JumpToWindow` covers all of its indices.
 pub const WINDOWS: &[UserAction] = &[
     UserAction::IncrementWindow,
@@ -101,6 +107,8 @@ impl KeyMap {
         map.insert((KeyCode::Char('p'), none), UserAction::PrevPage);
         map.insert((KeyCode::Char('?'), none), UserAction::ToggleHelp);
         map.insert((KeyCode::Char('?'), KeyModifiers::SHIFT), UserAction::ToggleHelp);
+        map.insert((KeyCode::Char(':'), none), UserAction::OpenPrompt);
+        map.insert((KeyCode::Char(':'), KeyModifiers::SHIFT), UserAction::OpenPrompt);
         map.insert((KeyCode::Tab, none), UserAction::IncrementWindow);
         map.insert(
             (KeyCode::BackTab, KeyModifiers::SHIFT),
