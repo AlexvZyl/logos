@@ -1,5 +1,6 @@
 pub mod book_column;
 pub mod book_reader;
+pub mod confirm;
 pub mod books_view;
 pub mod footer;
 pub mod help_overlay;

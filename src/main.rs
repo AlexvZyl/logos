@@ -11,6 +11,7 @@ mod theme;
 
 use crate::app::events::{KeyMap, UserAction};
 use crate::components::Component;
+use crate::components::confirm::Confirm;
 use crate::components::help_overlay::HelpOverlay;
 use crate::components::prompt::{Prompt, PromptKey};
 use crate::app::command;
@@ -55,6 +56,7 @@ fn app_loop(terminal: &mut DefaultTerminal) -> Result<()> {
     let keymap = KeyMap::default();
     let mut help: Option<HelpOverlay> = None;
     let mut prompt: Option<Prompt> = None;
+    let mut confirm_quit: Option<Confirm> = None;
     loop {
         // Wait indefinitely for event.
         // TODO: I really want some kind of tick mechanism.
@@ -76,8 +78,17 @@ fn app_loop(terminal: &mut DefaultTerminal) -> Result<()> {
                     continue;
                 }
 
-                // The prompt takes all keys while open, bypassing the keymap.
-                if let Some(open) = &mut prompt {
+                if let Some(confirm) = &confirm_quit {
+                    match confirm.key(key) {
+                        Some(true) => {
+                            confirm_quit = None;
+                            mode = mode.update(&mut ctx, &AppEvent::UserAction(UserAction::Quit))?;
+                        }
+                        Some(false) => confirm_quit = None,
+                        None => {}
+                    }
+                } else if let Some(open) = &mut prompt {
+                    // The prompt takes all keys while open, bypassing the keymap.
                     // Any key closes an error.
                     if open.error().is_some() {
                         prompt = None;
@@ -111,6 +122,8 @@ fn app_loop(terminal: &mut DefaultTerminal) -> Result<()> {
                             help = Some(HelpOverlay::new(&keymap, mode.actions()));
                         }
                         UserAction::OpenPrompt => prompt = Some(Prompt::new()),
+                        // Quitting from the prompt with `:q` does not ask.
+                        UserAction::Quit => confirm_quit = Some(Confirm::new("Quit logos?")),
                         _ => mode = mode.update(&mut ctx, &AppEvent::UserAction(action))?,
                     }
                 }
@@ -128,6 +141,9 @@ fn app_loop(terminal: &mut DefaultTerminal) -> Result<()> {
             let _ = mode.render(&ctx, f).inspect_err(|e| error!("{e}"));
             if let Some(help) = &mut help {
                 let _ = help.render(f.area(), f.buffer_mut()).inspect_err(|e| error!("{e}"));
+            }
+            if let Some(confirm) = &mut confirm_quit {
+                let _ = confirm.render(f.area(), f.buffer_mut()).inspect_err(|e| error!("{e}"));
             }
             if let Some(prompt) = &mut prompt {
                 let area = Prompt::area(f.area());
