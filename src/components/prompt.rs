@@ -19,6 +19,8 @@ pub struct Prompt {
     input: String,
     /// Shown in place of the input after a failed command.  Any key then closes the prompt.
     error: Option<String>,
+    /// Shown dimmed after the input, accepted with `Tab`.
+    suggestion: Option<String>,
 }
 
 impl Prompt {
@@ -26,6 +28,7 @@ impl Prompt {
         Prompt {
             input: String::new(),
             error: None,
+            suggestion: None,
         }
     }
 
@@ -35,6 +38,14 @@ impl Prompt {
 
     pub fn set_error(&mut self, error: String) {
         self.error = Some(error);
+    }
+
+    pub fn input(&self) -> &str {
+        &self.input
+    }
+
+    pub fn set_suggestion(&mut self, suggestion: Option<String>) {
+        self.suggestion = suggestion;
     }
 
     pub fn key(&mut self, key: KeyEvent) -> PromptKey {
@@ -51,6 +62,12 @@ impl Prompt {
             }
             KeyCode::Char(c) => {
                 self.input.push(c);
+                PromptKey::Edit
+            }
+            KeyCode::Tab => {
+                if let Some(suggestion) = self.suggestion.take() {
+                    self.input.push_str(&suggestion);
+                }
                 PromptKey::Edit
             }
             _ => PromptKey::Edit,
@@ -84,10 +101,15 @@ impl Component for Prompt {
                     chars.next();
                     input = chars.as_str();
                 }
+                // The cursor sits on the first suggested character, like fish.
+                let suggestion = self.suggestion.as_deref().unwrap_or("");
+                let mut rest = suggestion.chars();
+                let under_cursor = rest.next().map_or(" ".to_string(), String::from);
                 Line::from(vec![
                     Span::styled(":", theme::PROMPT),
                     Span::styled(input, theme::PROMPT),
-                    Span::styled(" ", theme::PROMPT_CURSOR),
+                    Span::styled(under_cursor, theme::PROMPT_CURSOR),
+                    Span::styled(rest.as_str(), theme::PROMPT_SUGGESTION),
                 ])
             }
         };

@@ -95,7 +95,9 @@ fn app_loop(terminal: &mut DefaultTerminal) -> Result<()> {
                         continue;
                     }
                     match open.key(key) {
-                        PromptKey::Edit => {}
+                        PromptKey::Edit => {
+                            open.set_suggestion(command::complete(open.input(), &ctx.bible));
+                        }
                         PromptKey::Cancel => prompt = None,
                         PromptKey::Submit(input) => match command::parse(&input, &ctx.bible) {
                             Ok(None) => prompt = None,
