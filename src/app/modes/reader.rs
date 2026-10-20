@@ -187,6 +187,10 @@ impl ModeTrait for Reader {
             Panel::References | Panel::Strongs => &[GLOBAL, WINDOWS],
         }
     }
+
+    fn confirm_quit(&self) -> bool {
+        true
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

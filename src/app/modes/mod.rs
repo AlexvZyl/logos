@@ -14,6 +14,8 @@ pub trait ModeTrait {
     fn render(&mut self, ctx: &Context, f: &mut Frame) -> Result<()>;
     /// Available actions, grouped into help sections in display order.
     fn actions(&self) -> ActionSections;
+    /// Whether quitting with a key asks first.  Quitting from the prompt never asks.
+    fn confirm_quit(&self) -> bool;
 }
 
 /// What the whole app is showing.
@@ -37,6 +39,14 @@ impl Mode {
         match self {
             Mode::Dashboard(m) => m.render(ctx, f),
             Mode::Reader(m) => m.render(ctx, f),
+            Mode::Exit => unreachable!(),
+        }
+    }
+
+    pub fn confirm_quit(&self) -> bool {
+        match self {
+            Mode::Dashboard(m) => m.confirm_quit(),
+            Mode::Reader(m) => m.confirm_quit(),
             Mode::Exit => unreachable!(),
         }
     }

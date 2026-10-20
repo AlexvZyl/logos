@@ -50,4 +50,8 @@ impl ModeTrait for Dashboard {
     fn actions(&self) -> ActionSections {
         &[GLOBAL, &[UserAction::OpenReader]]
     }
+
+    fn confirm_quit(&self) -> bool {
+        false
+    }
 }

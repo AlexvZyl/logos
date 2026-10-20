@@ -123,7 +123,9 @@ fn app_loop(terminal: &mut DefaultTerminal) -> Result<()> {
                         }
                         UserAction::OpenPrompt => prompt = Some(Prompt::new()),
                         // Quitting from the prompt with `:q` does not ask.
-                        UserAction::Quit => confirm_quit = Some(Confirm::new("Quit logos?")),
+                        UserAction::Quit if mode.confirm_quit() => {
+                            confirm_quit = Some(Confirm::new("Quit logos?"));
+                        }
                         _ => mode = mode.update(&mut ctx, &AppEvent::UserAction(action))?,
                     }
                 }
