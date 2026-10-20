@@ -5,6 +5,7 @@ use crate::{
 };
 use quick_xml::Reader;
 use quick_xml::events::{BytesStart, Event};
+use serde::{Deserialize, Serialize};
 use std::time::Instant;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -37,6 +38,25 @@ impl RawSpan {
             start: start as u32,
             end: end as u32,
         }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/// OSIS book code, e.g. `Gen`.  The same in every translation, unlike the name.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct BookId(String);
+
+impl BookId {
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl std::fmt::Display for BookId {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        f.write_str(&self.0)
     }
 }
 
@@ -154,6 +174,8 @@ pub struct Revision {
 #[derive(Debug, Default)]
 #[allow(dead_code)]
 pub struct Book {
+    /// OSIS book code, e.g. `Gen`.
+    pub id: RawSpan,
     /// Short name, e.g. `Genesis`.
     pub name: RawSpan,
     /// Full title, e.g. `The First Book of Moses, called Genesis`.
@@ -332,25 +354,34 @@ impl Bible {
         &self.metadata
     }
 
-    /// Book names under their group title, e.g. `Old Testament`, in file order.
-    pub fn book_groups(&self) -> Vec<(String, Vec<String>)> {
-        let mut groups: Vec<(String, Vec<String>)> = Vec::new();
+    /// `(id, name)` of each book under its group title, e.g. `Old Testament`, in file order.
+    pub fn book_groups(&self) -> Vec<(String, Vec<(BookId, String)>)> {
+        let mut groups: Vec<(String, Vec<(BookId, String)>)> = Vec::new();
         for book in &self.books {
             let group = self.raw(book.group);
-            let name = self.raw(book.name).to_string();
+            let entry = (self.book_id(book), self.raw(book.name).to_string());
             match groups.last_mut() {
-                Some((title, names)) if title == group => names.push(name),
-                _ => groups.push((group.to_string(), vec![name])),
+                Some((title, entries)) if title == group => entries.push(entry),
+                _ => groups.push((group.to_string(), vec![entry])),
             }
         }
         groups
     }
 
-    pub fn get_book(&self, name: &str) -> Result<&Book> {
+    pub fn book_id(&self, book: &Book) -> BookId {
+        BookId(self.raw(book.id).to_string())
+    }
+
+    pub fn first_book(&self) -> BookId {
+        assert!(!self.books.is_empty());
+        self.book_id(&self.books[0])
+    }
+
+    pub fn get_book(&self, id: &BookId) -> Result<&Book> {
         self.books
             .iter()
-            .find(|b| self.raw(b.name) == name)
-            .ok_or(Error::BookNotFound(name.to_string()))
+            .find(|b| self.raw(b.id) == id.as_str())
+            .ok_or(Error::BookNotFound(id.to_string()))
     }
 
     // Parsing.
@@ -453,6 +484,8 @@ impl Bible {
         let mut awaiting_group_title = false;
         let mut awaiting_book_title = false;
         let mut group = RawSpan::default();
+        // `osisID` of the book `div`, used once its title gives the name.
+        let mut book_id = RawSpan::default();
         // What the next `</title>` belongs to, and the start of its content.
         let mut title: Option<(TitleOf, usize)> = None;
         // The heading being read, and those waiting for the next verse.
@@ -479,6 +512,9 @@ impl Bible {
                 Event::Start(ref e) if e.name().as_ref() == b"div" => {
                     awaiting_group_title = Self::has_attr_val(e, b"type", b"bookGroup");
                     awaiting_book_title = Self::has_attr_val(e, b"type", b"book");
+                    if awaiting_book_title {
+                        book_id = Self::attr_span(raw, e, b"osisID").unwrap_or_default();
+                    }
                 }
                 Event::Start(ref e) if e.name().as_ref() == b"title" && awaiting_group_title => {
                     title = Some((TitleOf::Group, after));
@@ -487,6 +523,7 @@ impl Bible {
                 Event::Start(ref e) if e.name().as_ref() == b"title" && awaiting_book_title => {
                     if let Some(name) = Self::attr_span(raw, e, b"short") {
                         books.push(Book {
+                            id: book_id,
                             name,
                             group,
                             ..Default::default()

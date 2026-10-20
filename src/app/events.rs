@@ -2,8 +2,6 @@ use crossterm::event::{KeyCode, KeyModifiers};
 use std::collections::HashMap;
 
 pub enum AppEvent {
-    /// Special event fired at start of app.
-    AppStart,
     /// Action performed/requested by the user.
     UserAction(UserAction),
     /// Window focus, specific to components.
@@ -60,40 +58,17 @@ impl UserAction {
     }
 }
 
-/// What the user is looking at.  Decides which actions are available.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum View {
-    Dashboard,
-    Books,
-    Reader,
-    References,
-    Strongs,
-}
+/// Available actions, grouped into help sections in display order.
+pub type ActionSections = &'static [&'static [UserAction]];
 
-impl View {
-    /// Available actions, grouped into help sections in display order.
-    pub const fn sections(self) -> &'static [&'static [UserAction]] {
-        match self {
-            View::Dashboard => &[GLOBAL, &[UserAction::OpenReader]],
-            View::Books => &[GLOBAL, WINDOWS, NAVIGATION],
-            View::Reader => &[GLOBAL, WINDOWS, NAVIGATION, COLUMNS],
-            View::References | View::Strongs => &[GLOBAL, WINDOWS],
-        }
-    }
-
-    pub fn has(self, action: UserAction) -> bool {
-        self.sections().iter().flat_map(|s| s.iter()).any(|a| a.same(action))
-    }
-}
-
-const GLOBAL: &[UserAction] = &[UserAction::ToggleHelp, UserAction::Quit];
+pub const GLOBAL: &[UserAction] = &[UserAction::ToggleHelp, UserAction::Quit];
 /// A single `JumpToWindow` covers all of its indices.
-const WINDOWS: &[UserAction] = &[
+pub const WINDOWS: &[UserAction] = &[
     UserAction::IncrementWindow,
     UserAction::DecrementWindow,
     UserAction::JumpToWindow(0),
 ];
-const NAVIGATION: &[UserAction] = &[
+pub const NAVIGATION: &[UserAction] = &[
     UserAction::MoveDown,
     UserAction::MoveUp,
     UserAction::HalfPageDown,
@@ -101,7 +76,7 @@ const NAVIGATION: &[UserAction] = &[
     UserAction::NextPage,
     UserAction::PrevPage,
 ];
-const COLUMNS: &[UserAction] = &[UserAction::IncrementColumns, UserAction::DecrementColumns];
+pub const COLUMNS: &[UserAction] = &[UserAction::IncrementColumns, UserAction::DecrementColumns];
 
 /// Mappings of keys -> actions.
 ///
@@ -143,9 +118,9 @@ impl KeyMap {
         self.0.get(&(*key, modifiers)).copied()
     }
 
-    /// Returns `(keys, description)` per section of `view`, with all keys for the same action
+    /// Returns `(keys, description)` per section, with all keys for the same action
     /// grouped.  Plain keys are listed before modified ones.
-    pub fn help_entries(&self, view: View) -> Vec<Vec<(String, &'static str)>> {
+    pub fn help_entries(&self, sections: ActionSections) -> Vec<Vec<(String, &'static str)>> {
         let mut bindings: Vec<_> = self.0.iter().collect();
         bindings.sort_by_key(|&(&(code, mods), _)| (mods.bits(), format_key(&code, mods)));
 
@@ -161,7 +136,7 @@ impl KeyMap {
             keys.join(", ")
         };
 
-        view.sections()
+        sections
             .iter()
             .map(|actions| {
                 actions

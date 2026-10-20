@@ -2,7 +2,7 @@ use ratatui::layout::Direction;
 use ratatui::widgets::{Block, BorderType, Borders};
 
 use crate::app::events::{AppEvent, UserAction};
-use crate::bible::Bible;
+use crate::bible::{Bible, BookId};
 use crate::components::Component;
 use crate::components::book_column::{BookLayout, PAGE_GAP, Position};
 use crate::prelude::*;
@@ -12,7 +12,7 @@ const MAX_COLUMNS: usize = 4;
 
 pub struct BookReader {
     bible: Arc<Bible>,
-    current_book_name: String,
+    book: BookId,
     scrolled_offset: usize,
     focused: bool,
     book_changed: bool,
@@ -29,10 +29,10 @@ pub struct BookReader {
 }
 
 impl BookReader {
-    pub fn new(bible: Arc<Bible>, current_book_name: String) -> Self {
+    pub fn new(bible: Arc<Bible>, book: BookId) -> Self {
         BookReader {
             bible,
-            current_book_name,
+            book,
             scrolled_offset: 0,
             focused: false,
             book_changed: true,
@@ -46,8 +46,8 @@ impl BookReader {
         }
     }
 
-    pub fn book_name(&self) -> &str {
-        &self.current_book_name
+    pub fn book(&self) -> &BookId {
+        &self.book
     }
 
     pub fn position(&self) -> Position {
@@ -64,9 +64,9 @@ impl BookReader {
         self.last_params = None;
     }
 
-    pub fn set_book(&mut self, book: &str) {
-        if self.current_book_name != book {
-            self.current_book_name = book.to_string();
+    pub fn set_book(&mut self, book: &BookId) {
+        if self.book != *book {
+            self.book = book.clone();
             self.scrolled_offset = 0;
             self.book_changed = true;
             self.set_position(Position::default());
@@ -140,7 +140,8 @@ impl Component for BookReader {
     }
 
     fn render(&mut self, area: Rect, buf: &mut Buffer) -> Result<()> {
-        let title = format!(" [2] {} ", self.current_book_name);
+        let book = self.bible.get_book(&self.book)?;
+        let title = format!(" [2] {} ", self.bible.raw(book.name));
         let title_width = title.width();
         let block = Block::default()
             .borders(Borders::ALL)
@@ -154,7 +155,6 @@ impl Component for BookReader {
         assert_eq!(columns.len(), self.num_columns);
         let width = columns[0].width as usize;
         if self.book_changed || self.book_layout.as_ref().is_none_or(|l| l.width != width) {
-            let book = self.bible.get_book(&self.current_book_name)?;
             self.book_layout = Some(BookLayout::new(&self.bible, book, width));
             self.book_changed = false;
         }

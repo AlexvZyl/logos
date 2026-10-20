@@ -1,3 +1,4 @@
+use crate::bible::BookId;
 use crate::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -11,7 +12,7 @@ pub struct AppCache {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(default)]
 pub struct ReaderCache {
-    pub book: Option<String>,
+    pub book: Option<BookId>,
     pub chapter: usize,
     pub verse: usize,
     pub num_columns: usize,

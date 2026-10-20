@@ -1,4 +1,5 @@
 use crate::app::events::{AppEvent, UserAction};
+use crate::bible::BookId;
 use crate::chars::{Icon, Symbol};
 use crate::components::Component;
 use crate::prelude::*;
@@ -19,6 +20,7 @@ enum Row {
 }
 
 pub struct BooksView {
+    ids: Vec<BookId>,
     books: Vec<String>,
     rows: Vec<Row>,
     /// Row of each book.
@@ -39,23 +41,26 @@ pub struct BooksView {
 }
 
 impl BooksView {
-    /// `groups` is `(title, books)`.  Groups without a title get no separator.
-    pub fn new(groups: Vec<(String, Vec<String>)>) -> Self {
+    /// `groups` is `(title, [(id, name)])`.  Groups without a title get no separator.
+    pub fn new(groups: Vec<(String, Vec<(BookId, String)>)>) -> Self {
+        let mut ids = Vec::new();
         let mut books = Vec::new();
         let mut rows = Vec::new();
         let mut book_rows = Vec::new();
-        for (title, names) in groups {
+        for (title, entries) in groups {
             if !title.is_empty() {
                 rows.push(Row::Group(title));
             }
-            for name in names {
+            for (id, name) in entries {
                 book_rows.push(rows.len());
                 rows.push(Row::Book(books.len()));
+                ids.push(id);
                 books.push(name);
             }
         }
         assert!(!books.is_empty());
         assert_eq!(book_rows.len(), books.len());
+        assert_eq!(ids.len(), books.len());
         let all_lines = BooksView::build_line_cache(&books, "   ");
         let selected_prefix = format!(" {} ", Icon::Selected.as_str());
         let selected_lines = BooksView::build_line_cache(&books, &selected_prefix)
@@ -63,6 +68,7 @@ impl BooksView {
             .map(|l| l.style(theme::SELECTED))
             .collect();
         BooksView {
+            ids,
             books,
             rows,
             book_rows,
@@ -76,13 +82,13 @@ impl BooksView {
         }
     }
 
-    pub fn selected_book(&self) -> &str {
-        &self.books[self.selected_book_index]
+    pub fn selected_book(&self) -> &BookId {
+        &self.ids[self.selected_book_index]
     }
 
     /// Does nothing if the book does not exist.
-    pub fn select(&mut self, book: &str) {
-        if let Some(i) = self.books.iter().position(|b| b == book) {
+    pub fn select(&mut self, book: &BookId) {
+        if let Some(i) = self.ids.iter().position(|b| b == book) {
             self.selected_book_index = i;
             self.follow_selection = true;
         }
