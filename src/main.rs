@@ -89,11 +89,6 @@ fn app_loop(terminal: &mut DefaultTerminal) -> Result<()> {
                     }
                 } else if let Some(open) = &mut prompt {
                     // The prompt takes all keys while open, bypassing the keymap.
-                    // Any key closes an error.
-                    if open.error().is_some() {
-                        prompt = None;
-                        continue;
-                    }
                     match open.key(key) {
                         PromptKey::Edit => {
                             open.set_suggestion(command::complete(open.input(), &ctx.bible));

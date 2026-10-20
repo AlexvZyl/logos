@@ -17,7 +17,7 @@ pub enum PromptKey {
 /// The `:` command line, drawn over the bottom row.
 pub struct Prompt {
     input: String,
-    /// Shown in place of the input after a failed command.  Any key then closes the prompt.
+    /// Shown in place of the input after a failed command, until the next key.
     error: Option<String>,
     /// Shown dimmed after the input, accepted with `Tab`.
     suggestion: Option<String>,
@@ -32,10 +32,7 @@ impl Prompt {
         }
     }
 
-    pub fn error(&self) -> Option<&str> {
-        self.error.as_deref()
-    }
-
+    /// The input is kept, so the next key goes back to editing it.
     pub fn set_error(&mut self, error: String) {
         self.error = Some(error);
     }
@@ -49,11 +46,14 @@ impl Prompt {
     }
 
     pub fn key(&mut self, key: KeyEvent) -> PromptKey {
-        assert!(self.error.is_none());
+        // Esc only leaves the error.  Any other key leaves it and still applies to the input.
+        if self.error.take().is_some() && key.code == KeyCode::Esc {
+            return PromptKey::Edit;
+        }
         match key.code {
             KeyCode::Esc => PromptKey::Cancel,
             KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => PromptKey::Cancel,
-            KeyCode::Enter => PromptKey::Submit(std::mem::take(&mut self.input)),
+            KeyCode::Enter => PromptKey::Submit(self.input.clone()),
             // Like vim, deleting past the start closes the prompt.
             KeyCode::Backspace if self.input.is_empty() => PromptKey::Cancel,
             KeyCode::Backspace => {
