@@ -11,11 +11,11 @@ A bible TUI app.  For the nerdiest of Christians.
 
 ## Building
 
-Requires a recent stable [Rust](https://rustup.rs).
+Install [Rust](https://rustup.rs).
 
 ```sh
-cargo build --release              # Binary at target/release/logos.
-cargo install --path .             # Installs to ~/.cargo/bin, which should be on your PATH.
+cargo build --release
+cargo install --path .
 ```
 
 ## AI usage
